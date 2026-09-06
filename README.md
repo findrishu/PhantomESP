@@ -10,11 +10,17 @@
 ---
 ## 📸 Screenshots
 
+### Welcome Screen
+![Welcome Screen](assets/screenshot1.png)
+
 ### Console View
-![Console View](assets/screenshot1.png)
+![Console View](assets/screenshot2.png)
+
+### Commands View
+![Commands View](assets/screenshot3.png)
 
 ### Command Center
-![Command Center](assets/screenshot2.png)
+![Command Center](assets/screenshot4.png)
 
 ---
 
