@@ -8,9 +8,13 @@
 </div>
 
 ---
-## 📸 Screenshot
-<!-- Add your screenshot here by dragging and dropping an image file into GitHub's editor, or linking to a file in the assets folder like below: -->
-![PhantomESP Screenshot](assets/screenshot.png)
+## 📸 Screenshots
+
+### Console View
+![Console View](assets/screenshot1.png)
+
+### Command Center
+![Command Center](assets/screenshot2.png)
 
 ---
 
