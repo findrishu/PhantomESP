@@ -8,6 +8,11 @@
 </div>
 
 ---
+## 📸 Screenshot
+<!-- Add your screenshot here by dragging and dropping an image file into GitHub's editor, or linking to a file in the assets folder like below: -->
+![PhantomESP Screenshot](assets/screenshot.png)
+
+---
 
 ## ⚡ Overview
 This project provides a hardware-free, entirely web-based GUI for interacting with popular ESP32 security/hacker firmwares like **ESP32 Marauder**, **Ghost ESP**, and **Bruce**. It connects directly to your ESP32 via USB using the Web Serial API (supported by Chrome, Edge, and Opera). No local servers, Python scripts, or command lines required.
