@@ -59,10 +59,10 @@ PhantomESP acts as a versatile command center for both Red Team (Offensive) and 
 ### [ESP32 Marauder](https://github.com/justcallmekoko/ESP32Marauder)
 Fully supported. The dashboard automatically parses `sysinfo` to detect SD cards and attached hardware. Quick commands include scanning, sniffing, and attacks.
 
-### Ghost ESP
+### [Ghost ESP](https://github.com/GhostESP-Revival/GhostESP)
 Supported via the firmware selector. Dropdown dynamically loads Ghost ESP specific commands (e.g. `ap_scan`, `beacon_spam`).
 
-### Bruce
+### [Bruce](https://github.com/BruceDevices/firmware)
 Supported via the firmware selector. Dropdown dynamically loads Bruce specific commands.
 
 ## ⚙️ Customization
