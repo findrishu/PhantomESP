@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Marauder Skull Boot Animation</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #000;
+    display: flex; align-items: center; justify-content: center;
+    overflow: auto;
+  }
+  pre {
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    line-height: 1.0;
+    white-space: pre;
+    margin: 0;
+    letter-spacing: 0;
+  }
+</style>
+</head>
+<body>
+<pre id="asciiArt"></pre>
+<script>
+(function(){
+const lines = [
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                 =                                                  ",
+"                                        ..:-:..-:=.-: .---. ::.                                     ",
+"                                       *+=+#*+=#*=*#*++###*=*#*-+-                                  ",
+"                                    .+*****#***#***+++*#****+***.                                   ",
+"                                   ..+############*+++*#*+*#*+**.                                   ",
+"                                   +***+***+***+++*###*########*-:                                  ",
+"                                 :=++****#*****+++*#*****#######++=:                                ",
+"                                 .-*########*+++++*#*+++*########*=.                                ",
+"                                 ::..  ::::**=*+++++*=*###**#*-:#*=.                                ",
+"                                 .:        ..-..-+++=-=*:...... ..:.                                ",
+"                                              .++:++*:=-.                                           ",
+"                                +             .++=====:             ::                              ",
+"                               .=::.        .::----==-.           ..::                              ",
+"                               =*+*.      .++*+*+++++=.          :=+                                ",
+"                               :-+*--.. ...==++===--+***=:......=--:                                ",
+"                               -=+*====::====++++---+***==::::::=-=-                                ",
+"                               =+*########*+*=+     .==+*#*###*#+*=+                                ",
+"                               ..-=====###*:.:.     .:.:+####*+=::..                                ",
+"                                 ::.-:=###**=.        -+**#*#*+=+=..                                ",
+"                                 ...=:.++****=:***=:..=***++=-. .-                                  ",
+"                                 ...=.-==+**+==***++=+=***==--...-                                  ",
+"                                 .:..+***++*********#=*+****-:-=                                    ",
+"                                 .. ..:=-++...:===+*+:=***+--:--.-                                  ",
+"                                .::....=+#+.... :--*+=#***=:=+*+.-                                  ",
+"                                .=***==*+..***+  -=*-=. :=+*:-  -:.                                 ",
+"                                .:-**:.**+=---:.:+=-::....:---..--                                  ",
+"                                 :-**++****.- .+**+=:*++==+=+*+=+-                                  ",
+"                                   :-**-=*****+:..-*=.-*:                                           ",
+"                                    .==-=+*###+*-:=#++=*:......                                     ",
+"                                      .+*+*########*:   .###*+=.                                    ",
+"                                       .:---=+*+:----====--::::.                                    ",
+"                                        .-=++++=.   -====.                                          ",
+"                                             :                                                      ",
+"                                                                                                    ",
+"                          #...# .###. ####. .###. #...# ####. ##### ####.                          ",
+"                          ##.## #...# #...# #...# #...# #...# #.... #...#                          ",
+"                          #.#.# ##### ####. ##### #...# #...# ###.. ####.                          ",
+"                          #...# #...# #..#. #...# #...# #...# #.... #..#.                          ",
+"                          #...# #...# #...# #...# .###. ####. ##### #...#                          ",
+"                                                                                                    "
+];
+
+const el = document.getElementById('asciiArt');
+const grid = lines.map(l => l.split(''));
+const rows = grid.length;
+const cols = Math.max(...grid.map(r => r.length));
+for (let r = 0; r < rows; r++) {
+  while (grid[r].length < cols) grid[r].push(' ');
+}
+
+let cells = [];
+for (let r = 0; r < rows; r++) {
+  for (let c = 0; c < cols; c++) {
+    if (grid[r][c] !== ' ') cells.push({r, c, ch: grid[r][c]});
+  }
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+const order = shuffle(cells.slice());
+
+let colorGrid = [];
+for (let r = 0; r < rows; r++) colorGrid.push(new Array(cols).fill(null));
+
+// Animation phases:
+// 1. reveal   -> characters appear one by one in GREEN (skull is still building)
+// 2. hold     -> short pause once skull is 100% assembled, still GREEN
+// 3. colorshift -> a brief glitch flicker (only pure green/pure red, no blended orange), then locks RED
+// 4. done     -> finished skull flickers gently in RED
+let revealed = 0;
+let phase = 'reveal';
+let colorT = 0;
+let flickerFrame = 0;
+const GREEN = '#00ff5a';
+const RED = '#ff2828';
+const GLITCH_FRAMES = 14;
+
+function render() {
+  let html = '';
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const ch = grid[r][c];
+      const col = colorGrid[r][c];
+      if (ch === ' ' || !col) {
+        html += ' ';
+      } else {
+        html += '<span style="color:' + col + '; text-shadow:0 0 4px ' + col + ';">' + ch + '</span>';
+      }
+    }
+    html += '\n';
+  }
+  el.innerHTML = html;
+}
+
+function animate() {
+  if (phase === 'reveal') {
+    const target = Math.floor(revealed);
+    for (let i = 0; i < target && i < order.length; i++) {
+      const p = order[i];
+      if (!colorGrid[p.r][p.c]) colorGrid[p.r][p.c] = '#00ff5a';
+    }
+    revealed += 30;
+    if (revealed >= order.length) {
+      // Skull is now FULLY built - lock it green briefly, then start red transition
+      for (let i = 0; i < order.length; i++) colorGrid[order[i].r][order[i].c] = GREEN;
+      phase = 'hold';
+      setTimeout(() => { phase = 'colorshift'; }, 500);
+    }
+  } else if (phase === 'colorshift') {
+    // Direct green/red glitch - never mixes the two, so no orange/yellow ever appears
+    colorT++;
+    const isGreenFrame = colorT % 4 < 2 && colorT < GLITCH_FRAMES;
+    const col = colorT < GLITCH_FRAMES ? (isGreenFrame ? GREEN : RED) : RED;
+    for (let i = 0; i < order.length; i++) colorGrid[order[i].r][order[i].c] = col;
+    if (colorT >= GLITCH_FRAMES) phase = 'done';
+  } else if (phase === 'done') {
+    flickerFrame++;
+    for (let i = 0; i < order.length; i++) {
+      const p = order[i];
+      const flick = 0.8 + 0.2 * Math.sin((flickerFrame * 0.1) + i * 0.5);
+      const alpha = Math.max(0.4, flick);
+      colorGrid[p.r][p.c] = 'rgba(255,40,40,' + alpha + ')';
+    }
+  }
+  render();
+  requestAnimationFrame(animate);
+}
+animate();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PhantomESP CyberSerial</title>
+<link rel="icon" type="image/png" href="assets/skull.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #030303;
+    --panel:    #080808;
+    --border:   #1e1e1e;
+    --muted:    #555;
+    --text:     #aaa;
+    --bright:   #ddd;
+    --red:      #c00;
+    --red-hot:  #ff2828;
+    --green:    #00ff5a;
+    --mono:     'Share Tech Mono', monospace;
+    --vt:       'VT323', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    background-image:
+      linear-gradient(rgba(255,0,0,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,0,0,.025) 1px, transparent 1px);
+    background-size: 20px 20px;
+    color: var(--text);
+    font-family: var(--mono);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── LAYOUT SHELL ────────────────────────────────────── */
+  .dash-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ── HEADER ──────────────────────────────────────────── */
+  .dash-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 56px;
+    background: #000;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .dash-title {
+    font-family: var(--vt);
+    font-size: 28px;
+    color: #fff;
+    letter-spacing: 5px;
+    animation: glitch 4s infinite;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+  }
+  .dash-title .cur { color: var(--red); animation: blink 1s step-end infinite; }
+  .dash-title:hover {
+    color: var(--red);
+    text-shadow: 2px 0 cyan, -2px 0 var(--red);
+  }
+  
+  .dash-device {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  
+  .dash-header-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  /* ── BODY ────────────────────────────────────────────── */
+  .dash-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ─────────────────────────────────────────── */
+  .dash-nav {
+    width: 220px;
+    background: #000;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 0;
+    flex-shrink: 0;
+    justify-content: space-between;
+  }
+  .dash-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sidebar-nav {
+    display: flex; flex-direction: column; gap: 12px;
+    padding: 0 12px; margin-top: 16px;
+  }
+  
+  .nav-item {
+    --bg: #000;
+    --hover-bg: #eee;
+    --hover-text: #000;
+    --shadow-color: rgba(255, 255, 255, 0.5);
+
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 20px;
+    background: var(--bg);
+    color: var(--muted);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.2s;
+    font-size: 14px;
+    font-family: var(--vt);
+    letter-spacing: 1px;
+    width: 100%;
+    outline: none;
+  }
+
+  .nav-item svg { width: 18px; height: 18px; stroke: currentColor; flex-shrink: 0; }
+  
+  .nav-item:hover, .nav-item.active {
+    color: var(--hover-text);
+    background: var(--hover-bg);
+    border-color: var(--hover-bg);
+    transform: translate(-4px, -4px);
+    box-shadow: 4px 4px 0px var(--shadow-color);
+  }
+
+  .nav-item:active {
+    transform: translate(0);
+    box-shadow: none;
+  }
+  .nav-item.active::before {
+    content: '';
+    position: absolute; left: 0; top: 15%; bottom: 15%;
+    width: 3px; background: var(--red); border-radius: 3px;
+  }
+
+  /* Fullscreen Mode */
+  .dash-shell.fullscreen .dash-header,
+  .dash-shell.fullscreen .dash-nav {
+    display: none !important;
+  }
+  .dash-shell.fullscreen .dash-content {
+    padding: 10px;
+  }
+  .dash-shell.fullscreen .panel {
+    max-width: none;
+  }
+  .dash-shell.fullscreen #terminal {
+    font-size: 16px;
+  }
+
+  .dash-device-card {
+    margin: 16px;
+    padding: 16px;
+    background: #0a0a0a;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .dash-device-card h4 {
+    font-family: var(--vt);
+    font-size: 16px;
+    color: silver;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+  
+  /* hw indicators */
+  .hw { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--muted); letter-spacing: 1px; margin-bottom: 8px; }
+  .hw .lbl { color: var(--text); font-weight: bold; }
+  .dot { width: 8px; height: 8px; background: var(--red); border-radius: 50%; flex-shrink: 0; transition: background 0.3s, box-shadow 0.3s; }
+  .dot.on  { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .dot.err { animation: blink-red 1s infinite; }
+  #wifi-val { font-family: var(--mono); font-size: 12px; color: var(--text); }
+
+  /* ── MAIN CONTENT ────────────────────────────────────── */
+  .dash-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+    align-items: center;
+    padding: 30px; 
+  }
+
+  /* panels */
+  .panel { 
+    display: none; 
+    width: 100%; 
+    max-width: 1200px; 
+    flex: 1; 
+    flex-direction: column; 
+    overflow: hidden; 
+  }
+  .panel.active { display: flex; }
+
+  /* ── CONSOLE PANEL ───────────────────────────────────── */
+  #console-panel { gap: 12px; }
+  #console-panel:hover #terminal-controls { opacity: 1 !important; }
+
+  #terminal {
+    flex: 1;
+    min-height: 200px;
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    overflow: auto;
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+    white-space: pre;
+    word-break: normal;
+    overflow-wrap: normal;
+    letter-spacing: 0px;
+    tab-size: 8;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+  }
+  #terminal::-webkit-scrollbar { width: 8px; }
+  #terminal::-webkit-scrollbar-track { background: #000; }
+  #terminal::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+  #shortcut-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 0;
+    flex-shrink: 0;
+  }
+  .pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; }
+  .pill-label { font-size: 12px; color: var(--muted); letter-spacing: 1px;}
+  .pill {
+    font-family: var(--mono); font-size: 12px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    color: var(--muted); padding: 4px 12px; border-radius: 12px;
+    cursor: pointer; transition: all .2s;
+  }
+  .pill:hover:not(:disabled) { color: var(--bright); border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.08); }
+  .pill:disabled { opacity: .25; cursor: not-allowed; }
+
+  .actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+  /* input row */
+  #input-row { display: flex; gap: 12px; margin-bottom: 4px; }
+  
+  #cmdInput {
+    flex: 1;
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--bright);
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 16px;
+    outline: none;
+  }
+  #cmdInput:focus { border-color: var(--text); }
+
+  /* Dropdowns */
+  .dash-select {
+    background: #000;
+    color: var(--bright);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: var(--mono);
+    padding: 4px 8px;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+  }
+  .dash-select option {
+    background: #050505;
+    color: var(--bright);
+  }
+
+  /* ── FILES PANEL ─────────────────────────────────────── */
+  .fm-container { display: flex; flex-direction: column; height: 100%; gap: 12px; margin-top: 16px; }
+  .fm-header { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); border: 1px solid var(--border); padding: 12px 16px; border-radius: 6px; }
+  .fm-title { font-family: var(--mono); font-size: 14px; font-weight: bold; color: var(--bright); display: flex; align-items: center; gap: 8px; text-transform: uppercase;}
+  .fm-actions { display: flex; gap: 8px; }
+  .fm-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 4px; font-family: var(--mono); font-size: 12px; cursor: pointer; transition: 0.2s; }
+  .fm-btn:hover:not(:disabled) { color: var(--bright); border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.05); }
+  .fm-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  
+  .fm-breadcrumb { background: rgba(255,255,255,0.02); border: 1px solid var(--border); padding: 12px 16px; border-radius: 6px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .fm-body { flex: 1; min-height: 300px; background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: 6px; display: flex; justify-content: center; align-items: center; font-family: var(--mono); color: var(--muted); position: relative; overflow-y: auto; }
+  .fm-footer { background: rgba(255,255,255,0.02); border: 1px solid var(--border); padding: 12px 16px; border-radius: 6px; font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; min-height: 44px; }
+  
+  .loader { border: 2px solid var(--border); border-top: 2px solid var(--green); border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+  /* ── COMMAND CENTER PANEL ───────────────────────────────── */
+  .cat-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 12px 16px; border-radius: 4px; font-family: var(--mono); font-size: 14px; text-align: left; cursor: pointer; transition: all 0.2s;
+  }
+  .cat-btn:hover { background: #111; color: var(--text); border-color: #333; }
+  .cat-btn.active { background: #111; color: var(--green); border-color: var(--green); }
+  
+  .cmd-item {
+    display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #1a1a1a;
+  }
+  .cmd-item:last-child { border-bottom: none; }
+  .cmd-info { flex: 1; margin-right: 16px; }
+  .cmd-title { font-family: var(--mono); font-weight: bold; color: var(--green); font-size: 14px; margin-bottom: 4px; }
+  .cmd-desc { font-family: var(--mono); color: var(--muted); font-size: 12px; line-height: 1.4; }
+  .cmd-run-btn { flex-shrink: 0; padding: 6px 16px; font-size: 12px; border-color: var(--green); color: var(--green); }
+  .cmd-run-btn:hover:not(:disabled) { background: var(--green); color: #000; box-shadow: 0.25rem 0.25rem var(--green); }
+    font-family: var(--mono);
+    font-size: 15px;
+    padding: 14px 18px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  #cmdInput:focus { border-color: #555; box-shadow: 0 0 10px rgba(255,255,255,0.05); }
+  #cmdInput::placeholder { color: #444; }
+  #cmdInput:disabled { opacity: .3; }
+
+  /* ── BUTTON STYLES (NEO-BRUTALISM) ───────────────────────── */
+  .btn, .act, #sendBtn {
+    --bg: #000;
+    --hover-bg: #eee;
+    --hover-text: #000;
+    --shadow-color: rgba(255, 255, 255, 0.5);
+    
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.2s;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  
+  #disconnectBtn, #stopScanBtn {
+    --bg: #000;
+    --hover-bg: var(--red);
+    --hover-text: #fff;
+    --shadow-color: rgba(255, 40, 40, 0.5);
+    
+    background: var(--bg);
+    color: var(--red);
+    border: 1px solid var(--red);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.2s;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  
+  .btn:hover:not(:disabled), .act:hover:not(:disabled), #sendBtn:hover:not(:disabled), #disconnectBtn:hover:not(:disabled), #stopScanBtn:hover:not(:disabled) {
+    color: var(--hover-text);
+    background: var(--hover-bg);
+    border-color: var(--hover-bg);
+    transform: translate(-0.25rem, -0.25rem);
+    box-shadow: 0.25rem 0.25rem var(--shadow-color);
+  }
+
+  .btn:active:not(:disabled), .act:active:not(:disabled), #sendBtn:active:not(:disabled), #disconnectBtn:active:not(:disabled), #stopScanBtn:active:not(:disabled) {
+    transform: translate(0);
+    box-shadow: none;
+  }
+  
+  .btn:disabled, .act:disabled, #sendBtn:disabled, #disconnectBtn:disabled, #stopScanBtn:disabled {
+    opacity: .25; 
+    cursor: not-allowed; 
+    border-color: var(--border); 
+    color: var(--muted);
+  }
+
+  /* specific button overrides */
+  .btn { font-size: 12px; padding: 8px 16px; }
+  .act { font-size: 11px; padding: 6px 12px; }
+  #sendBtn { font-size: 14px; padding: 0 24px; color: var(--red); border-color: rgba(204,0,0,.4); }
+  #sendBtn:hover:not(:disabled) { background: rgba(204,0,0,.1); border-color: var(--red); }
+  #stopScanBtn { font-size: 14px; padding: 0 24px; color: var(--red-hot); border-color: rgba(255,40,40,.35); }
+  #stopScanBtn:hover:not(:disabled) { background: rgba(255,40,40,.1); border-color: var(--red-hot); box-shadow: 0 0 15px rgba(255,40,40,0.2); }
+  #disconnectBtn { color: var(--red); border-color: rgba(180,0,0,.4); }
+  #disconnectBtn:hover:not(:disabled) { background: rgba(180,0,0,.1); border-color: var(--red); }
+
+  /* ── FILES PANEL ─────────────────────────────────────── */
+  #files-panel { 
+    gap: 20px;
+  }
+  
+  .file-manager-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+  }
+  .file-manager-header h3 { 
+    font-family: var(--vt); 
+    font-size: 24px; 
+    color: silver; 
+    letter-spacing: 3px; 
+  }
+
+  .file-sections {
+    display: flex;
+    gap: 24px;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .file-section {
+    flex: 1;
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .file-section-title {
+    padding: 12px 16px;
+    background: #080808;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--text);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .file-upload-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .input-group label {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .fm-input {
+    background: #050505;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--bright);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .fm-input:focus { border-color: #555; }
+  .fm-input::placeholder { color: #333; }
+  
+  .file-list-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+  }
+  #files-list { list-style: none; }
+  #files-list li {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    transition: all .15s;
+    background: #050505;
+  }
+  .term-ctrl {
+    background: #111;
+    border: 1px solid #333;
+    color: #888;
+    cursor: pointer;
+    padding: 4px 10px;
+    font-size: 12px;
+    transition: 0.2s;
+  }
+  .term-ctrl:hover {
+    background: #eee;
+    color: #000;
+    transform: translate(-0.15rem, -0.15rem);
+    box-shadow: 0.15rem 0.15rem #000, 0.15rem 0.15rem 0 1px var(--border);
+  }
+  #files-list li:hover { border-color: #555; background: #080808; }
+  .file-info { display: flex; align-items: center; gap: 12px; }
+  .file-name { color: var(--bright); }
+  .file-actions { display: flex; gap: 8px; }
+  
+  /* ── BOOT SCREEN ─────────────────────────────────────── */
+  #boot {
+    position: fixed; inset: 0;
+    background: #000;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999;
+    transition: opacity 1s;
+  }
+  #boot pre {
+    font-family: 'Courier New', monospace;
+    font-size: min(1.6vw, 2vh, 9px);
+    line-height: 1.0;
+    white-space: pre;
+    letter-spacing: 0;
+  }
+
+  /* ── ANIMATIONS ──────────────────────────────────────── */
+  @keyframes glitch {
+    0%,14%,17%,49%,52%,100% { text-shadow: none; transform: none; }
+    15% { text-shadow: 3px 0 var(--red),-3px 0 #aaa; transform: translate(-2px,1px); }
+    16% { text-shadow: -3px 0 var(--red),3px 0 #aaa; transform: translate(2px,-1px); }
+    50% { text-shadow: 3px 0 var(--red),-3px 0 #aaa; transform: translate(1px,-1px); }
+    51% { text-shadow: -3px 0 var(--red),3px 0 #aaa; transform: translate(-1px,1px); }
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  @keyframes blink-red {
+    0%,100% { background: var(--red-hot); box-shadow: 0 0 6px var(--red-hot); }
+    50% { background: #440000; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Boot Screen -->
+<div id="boot">
+  <pre id="asciiArt"></pre>
+</div>
+
+<div class="dash-shell">
+  <!-- Top Nav -->
+  <header class="dash-header">
+    <div class="dash-title">PhantomESP<span class="cur">_</span></div>
+
+    <div class="dash-header-actions">
+      <select id="firmwareSelect" class="dash-select" title="Select Firmware">
+        <option value="bruce">FW: Bruce</option>
+        <option value="generic">FW: Generic ESP</option>
+        <option value="ghostesp">FW: Ghost ESP</option>
+        <option value="marauder">FW: Marauder</option>
+      </select>
+      <select id="baudRate" class="dash-select">
+        <option value="115200">115200</option>
+        <option value="9600">9600</option>
+      </select>
+      <button class="btn" id="connectBtn" style="border-color:var(--green); color:var(--green);">CONNECT SERIAL PORT</button>
+    </div>
+  </header>
+
+  <!-- Body -->
+  <div class="dash-body">
+    
+    <!-- Sidebar -->
+    <aside class="dash-nav">
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-panel="console-panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+          <span>Console</span>
+        </button>
+        <button class="nav-item" data-panel="commands-panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+          </svg>
+          <span>Commands</span>
+        </button>
+        <button class="nav-item" data-panel="mirror-panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <span>Mirror</span>
+        </button>
+        <button class="nav-item" data-panel="files-panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span>Files</span>
+        </button>
+        <button class="nav-item" data-panel="info-panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span>Device Info</span>
+        </button>
+      </nav>
+
+      <div class="dash-device-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h4 style="margin:0;">// SYS_STATUS</h4>
+          <button class="act" id="sysRefreshBtn" style="padding:4px 8px; font-size:12px; height:24px;" title="Check SD Card" disabled>↻</button>
+        </div>
+        <div class="hw"><span class="lbl">SERIAL</span><span id="conn-text" style="color:var(--muted);">DISCONNECTED</span><div class="dot" id="conn-dot"></div></div>
+        <div class="hw"><span class="lbl">SD CARD</span><div class="dot" id="sd-dot"></div></div>
+        <div class="hw"><span class="lbl">ANTENNA <span id="ant-type" style="font-size:9px; color:var(--muted); margin-left:4px;"></span></span><div class="dot" id="ant-dot"></div></div>
+        <div class="hw"><span class="lbl">WIFI RSSI</span><span id="wifi-val">-- dBm</span></div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="dash-content">
+      
+      <!-- Console Panel -->
+      <div id="console-panel" class="panel active" style="position:relative;">
+        <div id="terminal-controls" style="position:absolute; top:12px; right:24px; display:flex; gap:6px; opacity:0.3; transition:0.3s; z-index:10;">
+          <button class="act" id="fontMinusBtn" title="Zoom Out" style="padding:4px 8px; font-size:12px; background:rgba(0,0,0,0.8);">A-</button>
+          <button class="act" id="fontPlusBtn" title="Zoom In" style="padding:4px 8px; font-size:12px; background:rgba(0,0,0,0.8);">A+</button>
+          <button class="act" id="fullscreenBtn" style="padding:4px 8px; font-size:12px; background:rgba(0,0,0,0.8);">⛶ FULL</button>
+        </div>
+        <div id="terminal"></div>
+
+        <div id="shortcut-row" style="margin-top: 8px; margin-bottom: 8px;">
+          <div class="pills" id="quickPills">
+            <span class="pill-label">QUICK:</span>
+            <!-- dynamically generated -->
+          </div>
+          <div class="actions">
+            <button class="act" id="copyBtn">COPY</button>
+            <button class="act" id="clearBtn">CLEAR</button>
+            <button class="act" id="exportBtn">EXPORT</button>
+            <button class="act" id="uploadBtn">UPLOAD</button>
+          </div>
+        </div>
+
+        <div id="input-row" style="margin-bottom: 4px;">
+          <input id="cmdInput" placeholder="Enter command..." autocomplete="off" spellcheck="false" disabled>
+          <button id="sendBtn" disabled>SEND</button>
+          <button id="stopScanBtn" disabled>■ STOP SCAN</button>
+        </div>
+      </div>
+
+      <!-- Commands Panel -->
+      <div id="commands-panel" class="panel">
+        <h3 style="font-family: var(--vt); font-size: 24px; color: silver; letter-spacing: 3px; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">// COMMAND CENTER</h3>
+        
+        <div style="display:flex; gap:20px; flex:1; overflow:hidden;">
+          <!-- Categories -->
+          <div style="width:200px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; padding-right:8px;" id="cmdCategories">
+            <!-- Dynamically populated -->
+          </div>
+          <!-- Command List -->
+          <div style="flex:1; background:#050505; border:1px solid var(--border); border-radius:6px; overflow-y:auto; padding:16px;" id="cmdList">
+            <!-- Dynamically populated -->
+            <div style="color:var(--muted); text-align:center; margin-top:40px; font-family:var(--mono);">Select a category from the left</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mirror Panel -->
+      <div id="mirror-panel" class="panel">
+        <div class="mirror-container" style="display:flex; flex:1; gap:24px; height:100%; overflow:hidden;">
+          <!-- Screen Area -->
+          <div class="mirror-screen" style="flex:1; background:#000; border:1px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; position:relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
+            <canvas id="mirrorCanvas" style="display:none;"></canvas>
+            <div id="mirrorPlaceholder" style="color:var(--muted); font-family:var(--mono); font-size:13px; letter-spacing:1px;">Not receiving data. Try a different baudrate.</div>
+          </div>
+          
+          <!-- Controls Area -->
+          <div class="mirror-controls" style="width:240px; display:flex; flex-direction:column; gap:24px; align-items:center; justify-content:center; background:#080808; border:1px solid var(--border); border-radius:6px; padding:24px; flex-shrink:0;">
+            <!-- D-Pad -->
+            <div class="dpad" style="display:grid; grid-template-columns:repeat(3, 48px); grid-gap:8px; justify-content:center;">
+              <div></div>
+              <button class="act" data-key="up" style="height:48px; font-size:16px;">▲</button>
+              <div></div>
+              <button class="act" data-key="left" style="height:48px; font-size:16px;">◀</button>
+              <button class="act" data-key="center" style="height:48px; font-size:10px;">●</button>
+              <button class="act" data-key="right" style="height:48px; font-size:16px;">▶</button>
+              <div></div>
+              <button class="act" data-key="down" style="height:48px; font-size:16px;">▼</button>
+              <div></div>
+            </div>
+            <div style="font-size:12px; color:var(--muted); font-family:var(--mono); text-align:center; letter-spacing:1px;">WASD / Arrows</div>
+            
+            <div style="display:flex; gap:12px; width:100%; margin-top:10px;">
+              <button class="btn" style="flex:1;">START</button>
+              <button class="btn" style="flex:1;">STOP</button>
+            </div>
+            <div style="display:flex; gap:12px; width:100%;">
+              <button class="btn" style="flex:1;">SWAP:<br>OFF</button>
+              <button class="btn" style="flex:1;">SCREEN</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Files Panel -->
+      <div id="files-panel" class="panel">
+        <div class="fm-container">
+          
+          <div class="fm-header">
+            <div class="fm-title"><div class="dot on"></div> SD CARD</div>
+            <div class="fm-actions">
+              <button class="fm-btn" id="fmRefreshBtn">↻ Refresh</button>
+              <button class="fm-btn" id="fmSelectBtn">+ Upload</button>
+              <button class="fm-btn" id="fmMkdirBtn">+ Folder</button>
+              <input type="file" id="fileInput" style="display:none">
+            </div>
+          </div>
+          
+          <div class="fm-breadcrumb" id="fmBreadcrumb">
+            / &gt; mnt
+          </div>
+
+          <div class="fm-body" id="fmBody">
+            <div id="fmEmpty" style="display:flex; align-items:center; gap:8px;">
+               <div class="loader"></div>
+               <div>Loading...</div>
+            </div>
+          </div>
+
+          <div class="fm-footer">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--green)">Mounted</span> &nbsp;--&nbsp; <span id="fmStats">0 folders, 0 files</span>
+            </div>
+            
+            <div id="fmUploadUi" style="display:none; align-items:center; gap:8px;">
+              <span id="fmSelectedFile" style="color:var(--text);">No file</span>
+              <input type="text" id="fmDestPath" style="background:transparent; border:1px solid var(--border); color:var(--text); padding:4px 8px; font-size:12px; border-radius:4px; outline:none;" placeholder="/filename.bin">
+              <input type="text" id="fmInitCmd" style="display:none;" value="">
+              <button class="fm-btn" id="fmUploadBtn" style="border-color:var(--green); color:var(--green);">START UPLOAD</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Info Panel -->
+      <div id="info-panel" class="panel">
+        <h3 style="font-family: var(--vt); font-size: 24px; color: silver; letter-spacing: 3px; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 16px;">// DEVICE INFORMATION</h3>
+        <div style="background:#050505; border:1px solid var(--border); border-radius:6px; padding:24px; font-family:var(--mono); color:var(--text); font-size:14px; line-height:1.8; max-width: 600px;">
+          <p style="color:var(--muted); font-size:12px; margin-bottom:16px;">Run <strong style="color:silver">sysinfo</strong> to populate these fields if they don't automatically appear.</p>
+          
+          <div style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+            <span style="color:var(--muted);">FIRMWARE</span>
+            <span id="info-fw">Awaiting Data...</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+            <span style="color:var(--muted);">VERSION</span>
+            <span id="info-ver">--</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+            <span style="color:var(--muted);">HARDWARE (ESP MODEL)</span>
+            <span id="info-hw">ESP32</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+            <span style="color:var(--muted);">ESP-IDF</span>
+            <span id="info-espidf">--</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+            <span style="color:var(--muted);">WSL BYPASS</span>
+            <span id="info-wsl">--</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+            <span style="color:var(--muted);">STATION MAC</span>
+            <span id="info-stamac">--:--:--:--:--:--</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+            <span style="color:var(--muted);">AP MAC</span>
+            <span id="info-apmac">--:--:--:--:--:--</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+            <span style="color:var(--muted);">SD CARD INFO</span>
+            <span id="info-sd">--</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+            <span style="color:var(--muted);">BATTERY MONITOR</span>
+            <span id="info-batt">--</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+            <span style="color:var(--muted);">RAM / HEAP</span>
+            <span id="info-ram">--</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+            <span style="color:var(--muted);">WIFI SSID / NAME</span>
+            <span id="info-wifi">--</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+            <span style="color:var(--muted);">PINS / GPIO</span>
+            <span id="info-pins">--</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+            <span style="color:var(--muted);">BLUETOOTH</span>
+            <span id="info-bt">--</span>
+          </div>
+          <button class="btn" id="infoRefreshBtn" style="margin-top:16px; width:100%; justify-content:center; border-color:var(--green); color:var(--green);" disabled>FETCH SYSINFO</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Boot Animation -->
+<script>
+(function(){
+const lines = [
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                                                                    ",
+"                                                 =                                                  ",
+"                                        ..:-:..-:=.-: .---. ::.                                     ",
+"                                       *+=+#*+=#*=*#*++###*=*#*-+-                                  ",
+"                                    .+*****#***#***+++*#****+***.                                   ",
+"                                   ..+############*+++*#*+*#*+**.                                   ",
+"                                   +***+***+***+++*###*########*-:                                  ",
+"                                 :=++****#*****+++*#*****#######++=:                                ",
+"                                 .-*########*+++++*#*+++*########*=.                                ",
+"                                 ::..  ::::**=*+++++*=*###**#*-:#*=.                                ",
+"                                 .:        ..-..-+++=-=*:...... ..:.                                ",
+"                                              .++:++*:=-.                                           ",
+"                                +             .++=====:             ::                              ",
+"                               .=::.        .::----==-.           ..::                              ",
+"                               =*+*.      .++*+*+++++=.          :=+                                ",
+"                               :-+*--.. ...==++===--+***=:......=--:                                ",
+"                               -=+*====::====++++---+***==::::::=-=-                                ",
+"                               =+*########*+*=+     .==+*#*###*#+*=+                                ",
+"                               ..-=====###*:.:.     .:.:+####*+=::..                                ",
+"                                 ::.-:=###**=.        -+**#*#*+=+=..                                ",
+"                                 ...=:.++****=:***=:..=***++=-. .-                                  ",
+"                                 ...=.-==+**+==***++=+=***==--...-                                  ",
+"                                 .:..+***++*********#=*+****-:-=                                    ",
+"                                 .. ..:=-++...:===+*+:=***+--:--.-                                  ",
+"                                .::....=+#+.... :--*+=#***=:=+*+.-                                  ",
+"                                .=***==*+..***+  -=*-=. :=+*:-  -:.                                 ",
+"                                .:-**:.**+=---:.:+=-::....:---..--                                  ",
+"                                 :-**++****.- .+**+=:*++==+=+*+=+-                                  ",
+"                                   :-**-=*****+:..-*=.-*:                                           ",
+"                                    .==-=+*###+*-:=#++=*:......                                     ",
+"                                      .+*+*########*:   .###*+=.                                    ",
+"                                       .:---=+*+:----====--::::.                                    ",
+"                                        .-=++++=.   -====.                                          ",
+"                                             :                                                      ",
+"                                                                                                    ",
+"                    @@@@. #...# .%%%. 8...8 &&&&& .$$$. W...W   *****. ????? @@@@.                  ",
+"                    @...@ #...# %...% 88..8 ..&.. $...$ WW..W   *.... ?.... @...@                   ",
+"                    @@@@. ##### %%%%% 8.8.8 ..&.. $...$ W.W.W   ****. .???. @@@@.                   ",
+"                    @.... #...# %...% 8..88 ..&.. $...$ W...W   *.... ....? @....                   ",
+"                    @.... #...# %...% 8...8 ..&.. .$$$. W...W   *****. ????? @....                  ",
+"                                                                                                    "
+];
+const el = document.getElementById('asciiArt');
+const grid = lines.map(l => l.split(''));
+const rows = grid.length;
+const cols = Math.max(...grid.map(r => r.length));
+for (let r = 0; r < rows; r++) while (grid[r].length < cols) grid[r].push(' ');
+let cells = [];
+for (let r = 0; r < rows; r++)
+  for (let c = 0; c < cols; c++)
+    if (grid[r][c] !== ' ') cells.push({r, c});
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+const order = shuffle(cells.slice());
+let colorGrid = [];
+for (let r = 0; r < rows; r++) colorGrid.push(new Array(cols).fill(null));
+let revealed=0, phase='reveal', colorT=0, flickerFrame=0, bootFinished=false;
+const W='#ffffff', R='#ff2828', GF=14;
+function render(){
+  let html='';
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const ch=grid[r][c], col=colorGrid[r][c];
+      html += (ch===' '||!col)?' ':'<span style="color:'+col+';text-shadow:0 0 4px '+col+'">'+ch+'</span>';
+    }
+    html+='\n';
+  }
+  el.innerHTML=html;
+}
+function animate(){
+  if(bootFinished) return;
+  if(phase==='reveal'){
+    for(let i=0;i<Math.floor(revealed)&&i<order.length;i++){const p=order[i];if(!colorGrid[p.r][p.c])colorGrid[p.r][p.c]=W;}
+    revealed+=30;
+    if(revealed>=order.length){for(let i=0;i<order.length;i++)colorGrid[order[i].r][order[i].c]=W;phase='hold';setTimeout(()=>{phase='colorshift';},500);}
+  } else if(phase==='colorshift'){
+    colorT++;
+    const col=colorT<GF?(colorT%4<2?W:R):R;
+    for(let i=0;i<order.length;i++)colorGrid[order[i].r][order[i].c]=col;
+    if(colorT>=GF){phase='done';setTimeout(()=>{const b=document.getElementById('boot');b.style.opacity='0';setTimeout(()=>{b.style.display='none';bootFinished=true;},1000);},1500);}
+  } else if(phase==='done'){
+    flickerFrame++;
+    for(let i=0;i<order.length;i++){const p=order[i];const a=Math.max(0.4,0.8+0.2*Math.sin(flickerFrame*.1+i*.5));colorGrid[p.r][p.c]='rgba(255,40,40,'+a+')';}
+  }
+  render(); requestAnimationFrame(animate);
+}
+animate();
+})();
+</script>
+
+<script>
+const firmwareCommands = {
+  marauder: ["help", "scanall", "stopscan", "sniffbeacon", "sniffpmkid", "wardrive", "attack -t deauth", "clearlist -a", "info"],
+  ghostesp: ["help", "scanap", "-hsd", "-p", "beaconspam -r", "capture -probe", "karma start"],
+  bruce: ["help", "info", "settings", "free", "uptime", "date", "webui"],
+  generic: ["help", "info"]
+};
+
+const advancedCommands = {
+  marauder: {
+    "Scanning": [
+      { cmd: "scanall", desc: "Scan for both APs and Stations." },
+      { cmd: "pingscan", desc: "Perform a ping scan." },
+      { cmd: "arpscan", desc: "Perform an ARP scan." },
+      { cmd: "portscan", desc: "Perform a port scan on target." },
+      { cmd: "foxhunt -b", desc: "Foxhunt mode." },
+      { cmd: "mactrack", desc: "Track specific MAC addresses." },
+      { cmd: "stopscan", desc: "Stop any ongoing scan." }
+    ],
+    "Sniffing": [
+      { cmd: "sniffraw", desc: "Sniff raw packets." },
+      { cmd: "sniffbeacon", desc: "Sniff raw beacon frames." },
+      { cmd: "sniffprobe", desc: "Sniff probe requests." },
+      { cmd: "sniffpmkid", desc: "Capture PMKID handshakes for cracking." },
+      { cmd: "sniffpwn", desc: "Sniff for Pwnagotchis." },
+      { cmd: "sniffdeauth", desc: "Sniff deauthentication frames." },
+      { cmd: "sniffsae", desc: "Sniff WPA3 SAE handshakes." }
+    ],
+    "Attacks & Portal": [
+      { cmd: "attack -t deauth", desc: "Deauth attack." },
+      { cmd: "attack -t rickroll", desc: "Rickroll beacon spam." },
+      { cmd: "attack -t badmsg", desc: "Bad message attack." },
+      { cmd: "evilportal -c start", desc: "Start the Evil Portal." },
+      { cmd: "karma", desc: "Karma attack (requires setup)." }
+    ],
+    "GPS / Wardriving": [
+      { cmd: "wardrive", desc: "Start Wardriving (requires GPS/SD)." },
+      { cmd: "wardrivepoi", desc: "Tag a GPS POI during wardrive." },
+      { cmd: "gpstracker -c start", desc: "Start GPS tracker." },
+      { cmd: "gpsdata", desc: "Show current GPS data." },
+      { cmd: "nmea", desc: "Show raw NMEA output." }
+    ],
+    "System": [
+      { cmd: "info", desc: "Show system info (firmware, MAC, SD card)." },
+      { cmd: "channel", desc: "Show or set current WiFi channel." },
+      { cmd: "settings", desc: "Show current device settings." },
+      { cmd: "clearlist -a", desc: "Clear all saved APs from memory." },
+      { cmd: "ls /", desc: "List files on SD Card." },
+      { cmd: "reboot", desc: "Reboot device." }
+    ]
+  },
+  ghostesp: {
+    "WiFi Attacks": [
+      { cmd: "scanap", desc: "Scans for nearby Access Points." },
+      { cmd: "-hsd", desc: "Combined handshake capture and deauthentication attack." },
+      { cmd: "-p", desc: "Probe request flood (broadcasts spoofed probes)." },
+      { cmd: "-b", desc: "Bad message attack (EAPOL key install)." },
+      { cmd: "beaconspam -r", desc: "Starts a beacon spam attack with random SSIDs." },
+      { cmd: "karma start", desc: "Starts a Karma attack (requires target SSID list)." }
+    ],
+    "System": [
+      { cmd: "stop", desc: "Stops all ongoing attacks and scans." }
+    ]
+  },
+  bruce: {
+    "System": [
+      { cmd: "info", desc: "Show system info." },
+      { cmd: "settings", desc: "Show current settings." },
+      { cmd: "free", desc: "Show available memory." },
+      { cmd: "uptime", desc: "Show system uptime." },
+      { cmd: "date", desc: "Show or set current date." }
+    ]
+  },
+  generic: {
+    "General": [
+      { cmd: "help", desc: "Show available commands (if supported)." },
+      { cmd: "info", desc: "Show generic system info." }
+    ]
+  }
+};
+
+let currentCategory = "";
+
+function renderQuickCommands() {
+  const fw = document.getElementById('firmwareSelect').value;
+  
+  // Render Quick Pills
+  const cmds = firmwareCommands[fw] || [];
+  const container = document.getElementById('quickPills');
+  container.innerHTML = '<span class="pill-label">QUICK:</span>';
+  cmds.forEach(cmd => {
+    const btn = document.createElement('button');
+    btn.className = 'pill cmdBtn';
+    btn.dataset.cmd = cmd;
+    btn.textContent = cmd;
+    btn.disabled = !port?.writable;
+    btn.addEventListener('click', () => sendCommandText(cmd));
+    container.appendChild(btn);
+  });
+
+  // Render Advanced Categories
+  const adv = advancedCommands[fw] || {};
+  const catContainer = document.getElementById('cmdCategories');
+  catContainer.innerHTML = '';
+  
+  const categories = Object.keys(adv);
+  if (categories.length === 0) {
+    document.getElementById('cmdList').innerHTML = '<div style="color:var(--muted); text-align:center; margin-top:40px; font-family:var(--mono);">No advanced commands mapped for this firmware.</div>';
+    return;
+  }
+
+  if (!categories.includes(currentCategory)) {
+    currentCategory = categories[0];
+  }
+
+  categories.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn' + (cat === currentCategory ? ' active' : '');
+    btn.textContent = cat;
+    btn.addEventListener('click', () => {
+      currentCategory = cat;
+      renderQuickCommands(); // re-render to update active state
+    });
+    catContainer.appendChild(btn);
+  });
+
+  // Render Command List for selected category
+  const listContainer = document.getElementById('cmdList');
+  listContainer.innerHTML = '';
+  
+  const catCmds = adv[currentCategory] || [];
+  catCmds.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'cmd-item';
+    
+    div.innerHTML = `
+      <div class="cmd-info">
+        <div class="cmd-title">${item.cmd}</div>
+        <div class="cmd-desc">${item.desc}</div>
+      </div>
+    `;
+    
+    const runBtn = document.createElement('button');
+    runBtn.className = 'btn cmd-run-btn';
+    runBtn.textContent = 'RUN';
+    runBtn.disabled = !port?.writable;
+    
+    runBtn.addEventListener('click', () => {
+      sendCommandText(item.cmd);
+      // Automatically switch back to console tab
+      document.querySelector('[data-panel="console-panel"]').click();
+    });
+    
+    div.appendChild(runBtn);
+    listContainer.appendChild(div);
+  });
+
+  const fmBc = document.getElementById('fmBreadcrumb');
+  if (fmBc) {
+    fmBc.innerHTML = `/ &gt; mnt &gt; ${fw}`;
+  }
+}
+
+document.getElementById('firmwareSelect').addEventListener('change', renderQuickCommands);
+renderQuickCommands();
+</script>
+
+<!-- Serial Logic -->
+<script>
+let port, reader, keepReading = false;
+
+const connectBtn    = document.getElementById('connectBtn');
+const disconnectBtn = document.getElementById('disconnectBtn');
+const stopScanBtn   = document.getElementById('stopScanBtn');
+const sysRefreshBtn = document.getElementById('sysRefreshBtn');
+const infoRefreshBtn= document.getElementById('infoRefreshBtn');
+const cmdInput      = document.getElementById('cmdInput');
+const sendBtn       = document.getElementById('sendBtn');
+const terminal      = document.getElementById('terminal');
+
+// File Manager elements
+const fmSelectBtn    = document.getElementById('fmSelectBtn');
+const fmSelectedFile = document.getElementById('fmSelectedFile');
+const fmDestPath     = document.getElementById('fmDestPath');
+const fmInitCmd      = document.getElementById('fmInitCmd');
+const fmUploadBtn    = document.getElementById('fmUploadBtn');
+
+function log(t){ terminal.appendChild(document.createTextNode(t)); terminal.scrollTop = terminal.scrollHeight; }
+function logHTML(h){ terminal.insertAdjacentHTML('beforeend', h); terminal.scrollTop = terminal.scrollHeight; }
+
+function setConnected(yes) {
+  if (yes) {
+    connectBtn.textContent = 'DISCONNECT';
+    connectBtn.style.color = 'var(--red)';
+    connectBtn.style.borderColor = 'var(--red)';
+  } else {
+    connectBtn.textContent = 'CONNECT SERIAL PORT';
+    connectBtn.style.color = 'var(--green)';
+    connectBtn.style.borderColor = 'var(--green)';
+  }
+  stopScanBtn.disabled   = !yes;
+  sysRefreshBtn.disabled = !yes;
+  infoRefreshBtn.disabled= !yes;
+  cmdInput.disabled      = !yes;
+  sendBtn.disabled       = !yes;
+  document.querySelectorAll('.cmdBtn').forEach(b => b.disabled = !yes);
+}
+
+async function connectSerial() {
+  if (!('serial' in navigator)) { alert('Web Serial API not supported. Use Chrome or Edge.'); return; }
+  try {
+    port = await navigator.serial.requestPort();
+    const br = parseInt(document.getElementById('baudRate').value) || 115200;
+    await port.open({ baudRate: br });
+    document.getElementById('conn-dot').className = 'dot on';
+    document.getElementById('conn-text').textContent = 'CONNECTED';
+    document.getElementById('conn-text').style.color = 'var(--green)';
+    setConnected(true);
+    renderQuickCommands();
+    keepReading = true;
+    readLoop();
+  } catch(e) { log('\n[Error] ' + e.message + '\n'); }
+}
+
+async function readLoop() {
+  const dec = new TextDecoderStream();
+  port.readable.pipeTo(dec.writable);
+  reader = dec.readable.getReader();
+  let buf = '';
+  try {
+    while (keepReading) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      
+      buf += value;
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      
+      for (let ln of lines) {
+        // Tabular Formatting for WiFi Scans (with Colors)
+        const staMatch = ln.match(/^\s*(\d+):\s+(ap|sta):\s+([\w:]+)\s+->\s+(sta|ap):\s+([\w:]+)(.*)/);
+        const apMatch = ln.match(/^\s*(-\d+)\s+Ch:\s*(\d+)\s+([\w:]+)\s+ESSID:\s*(.*)/);
+        
+        if (staMatch) {
+           let t1 = staMatch[2].toUpperCase() === 'AP' ? 'color:#c586c0' : 'color:#569cd6';
+           let t2 = staMatch[4].toUpperCase() === 'AP' ? 'color:#c586c0' : 'color:#569cd6';
+           logHTML(`  <span style="color:#858585">[</span><span style="color:#b5cea8">${staMatch[1].padStart(3)}</span><span style="color:#858585">]</span>  <span style="${t1};">${staMatch[2].toUpperCase().padEnd(3)}</span><span style="color:#858585">:</span> <span style="color:#dcdcaa">${staMatch[3]}</span>  <span style="color:#858585">--></span>  <span style="${t2};">${staMatch[4].toUpperCase().padEnd(3)}</span><span style="color:#858585">:</span> <span style="color:#dcdcaa">${staMatch[5]}</span>  <span style="color:#ce9178">${staMatch[6]}</span>\n`);
+        } else if (apMatch) {
+           let rssiVal = parseInt(apMatch[1]);
+           let rssiColor = rssiVal >= -60 ? '#4ec9b0' : (rssiVal >= -75 ? '#d7ba7d' : '#f44747');
+           let dist = rssiVal >= -60 ? 'VERY CLOSE' : (rssiVal >= -75 ? 'CLOSE' : (rssiVal >= -85 ? 'MEDIUM' : 'FAR'));
+           let bars = rssiVal >= -60 ? '■■■■' : (rssiVal >= -75 ? '■■■□' : (rssiVal >= -85 ? '■■□□' : '■□□□'));
+           logHTML(`  <span style="color:#858585">[</span><span style="color:#c586c0">RSSI</span><span style="color:#858585">:</span> <span style="color:${rssiColor}">${apMatch[1].padStart(4)}</span> <span style="color:${rssiColor}">${bars} ${dist.padEnd(10)}</span><span style="color:#858585">]</span>  <span style="color:#858585">[</span><span style="color:#c586c0">CH</span><span style="color:#858585">:</span> <span style="color:#b5cea8">${apMatch[2].padStart(2)}</span><span style="color:#858585">]</span>  <span style="color:#858585">[</span><span style="color:#c586c0">MAC</span><span style="color:#858585">:</span> <span style="color:#dcdcaa">${apMatch[3]}</span><span style="color:#858585">]</span>  <span style="color:#858585">[</span><span style="color:#c586c0">ESSID</span><span style="color:#858585">:</span> <span style="color:#ce9178">${apMatch[4]}</span><span style="color:#858585">]</span>\n`);
+        } else {
+           log(ln + '\n');
+        }
+        
+        const l = ln.toLowerCase();
+        
+        // Auto-detect firmware
+        if (l.includes('marauder') || l.includes('sniffbeacon') || l.includes('wardrive') || l.includes('sniffpmkid')) {
+          const fwSel = document.getElementById('firmwareSelect');
+          if (fwSel.value !== 'marauder') { fwSel.value = 'marauder'; renderQuickCommands(); }
+        } else if (l.includes('ghostesp') || l.includes('beaconspam') || l.includes('karma start')) {
+          const fwSel = document.getElementById('firmwareSelect');
+          if (fwSel.value !== 'ghostesp') { fwSel.value = 'ghostesp'; renderQuickCommands(); }
+        } else if (l.includes('bruce')) {
+          const fwSel = document.getElementById('firmwareSelect');
+          if (fwSel.value !== 'bruce') { fwSel.value = 'bruce'; renderQuickCommands(); }
+        }
+
+        // SD card detection
+        if (
+          l.includes('sd mounted') || l.includes('sd card found') || 
+          l.includes('evil portal') || l.includes('sd card mounted') ||
+          l.includes('sd card: mounted') || l.includes('sd card size') || l.match(/sd card:\s*\d+/i)
+        ) { 
+          document.getElementById('sd-dot').className='dot on'; 
+        }
+        else if (
+          l.includes('sd failed') || l.includes('no sd card') || 
+          l.includes('sd card failed') || l.includes('sd card: none') || 
+          l.includes('sd card: not mounted') || l.includes('sd card not found')
+        ) { 
+          document.getElementById('sd-dot').className='dot err'; 
+        }
+
+        // Antenna hardware
+        if      (l.includes('cc1101 found')||l.includes('nrf24 found')||l.includes('gps found'))
+          { document.getElementById('ant-dot').className='dot on'; }
+        else if (l.includes('cc1101 not found')||l.includes('nrf24 not found')||l.includes('gps not found')||l.includes('could not detect gps'))
+          { document.getElementById('ant-dot').className='dot err'; }
+        // RSSI
+        const m = l.match(/(-\d{2,3})\s*(?:CH|ch|dBm|\])/) || l.match(/\[(-\d{2,3})\]/) || l.match(/(?:rssi|lvl)[^\d-]*?(-\d{2,3})/i);
+        if (m) {
+          const rssi = parseInt(m[1]);
+          const el = document.getElementById('wifi-val');
+          const antType = document.getElementById('ant-type');
+          
+          let color = '';
+          let text = '';
+          
+          if (rssi >= -60) {
+            color = 'var(--green)';
+            text = 'IPEX (Excellent)';
+          } else if (rssi >= -70) {
+            color = 'var(--green)';
+            text = 'IPEX (Good)';
+          } else if (rssi >= -80) {
+            color = 'orange';
+            text = 'IPEX (Fair)';
+          } else {
+            color = 'var(--red)';
+            text = 'IPEX (Poor)';
+          }
+
+          el.textContent = rssi + ' dBm';
+          el.style.color = color;
+          
+          antType.textContent = text;
+          antType.style.color = color;
+          
+          document.getElementById('ant-dot').className = 'dot on';
+        }
+
+        // Device Info Parsing (Dynamic, no hardcoding)
+        if (l.startsWith('firmware:')) {
+          document.getElementById('info-fw').textContent = ln.substring(9).trim();
+        } else if (l.startsWith('version:')) {
+          document.getElementById('info-ver').textContent = ln.substring(8).trim();
+        } else if (l.startsWith('hardware:') || l.startsWith('chip:') || l.startsWith('model:')) {
+          document.getElementById('info-hw').textContent = ln.substring(ln.indexOf(':')+1).trim();
+        } else if (l.startsWith('esp-idf:')) {
+          document.getElementById('info-espidf').textContent = ln.substring(8).trim();
+        } else if (l.startsWith('wsl bypass:')) {
+          document.getElementById('info-wsl').textContent = ln.substring(11).trim();
+        } else if (l.startsWith('station mac:')) {
+          document.getElementById('info-stamac').textContent = ln.substring(12).trim();
+        } else if (l.startsWith('ap mac:')) {
+          document.getElementById('info-apmac').textContent = ln.substring(7).trim();
+        } else if (l.startsWith('mac:')) {
+          document.getElementById('info-stamac').textContent = ln.substring(4).trim();
+        } else if (l.startsWith('battery monitor:')) {
+          document.getElementById('info-batt').textContent = ln.substring(16).trim();
+        } else if (l.startsWith('free heap:') || l.startsWith('ram:') || l.startsWith('memory:')) {
+          document.getElementById('info-ram').textContent = ln.substring(ln.indexOf(':')+1).trim();
+        } else if (l.startsWith('ssid:') || l.startsWith('wifi:') || l.startsWith('ap name:')) {
+          document.getElementById('info-wifi').textContent = ln.substring(ln.indexOf(':')+1).trim();
+        } else if (l.startsWith('pins:') || l.startsWith('gpio:')) {
+          document.getElementById('info-pins').textContent = ln.substring(ln.indexOf(':')+1).trim();
+        } else if (l.startsWith('bluetooth:') || l.startsWith('bt:')) {
+          document.getElementById('info-bt').textContent = ln.substring(ln.indexOf(':')+1).trim();
+        } else if (l.startsWith('sd card size:') || l.startsWith('sd card type:') || l.startsWith('sd card model:') || l.startsWith('sd size:')) {
+          const v = ln.substring(ln.indexOf(':')+1).trim();
+          const el = document.getElementById('info-sd');
+          if (el.textContent === '--') el.textContent = v;
+          else if (!el.textContent.includes(v)) el.textContent += ' | ' + v;
+        }
+      }
+      
+      // Flush prompt without newline
+      if (buf.trim().endsWith('>') || buf.trim().endsWith('#')) {
+        log(buf);
+        buf = '';
+      }
+    }
+  } catch(e) { log('\n[Read Error] ' + e.message + '\n'); }
+  finally { try { reader.releaseLock(); } catch(_){} }
+}
+
+async function sendCommand() {
+  const t = cmdInput.value.trim();
+  if (!t || !port?.writable) return;
+  const w = port.writable.getWriter();
+  await w.write(new TextEncoder().encode(t + '\r\n'));
+  w.releaseLock();
+  log('> ' + t + '\n');
+  cmdInput.value = '';
+}
+
+async function sendCtrl(byte, label) {
+  if (!port?.writable) return;
+  const w = port.writable.getWriter();
+  await w.write(new Uint8Array([byte]));
+  w.releaseLock();
+  log('^' + label + '\n');
+}
+
+async function disconnectSerial() {
+  keepReading = false;
+  try {
+    if (reader) { await reader.cancel(); try{reader.releaseLock();}catch(_){} }
+    await new Promise(r => setTimeout(r, 50));
+    if (port) await port.close();
+  } catch(e) { log('\n[Disconnect Error] ' + e.message + '\n'); }
+  port = null; reader = null;
+  document.getElementById('conn-dot').className = 'dot';
+  document.getElementById('conn-text').textContent = 'DISCONNECTED';
+  document.getElementById('conn-text').style.color = 'var(--muted)';
+  document.getElementById('sd-dot').className  = 'dot';
+  document.getElementById('ant-dot').className = 'dot';
+  const wv = document.getElementById('wifi-val');
+  wv.textContent = '-- dBm'; wv.style.color = '';
+  setConnected(false);
+  renderQuickCommands();
+}
+
+// Events
+connectBtn.addEventListener('click', () => {
+  if (port && port.readable) disconnectSerial();
+  else connectSerial();
+});
+sendBtn.addEventListener('click', sendCommand);
+
+stopScanBtn.addEventListener('click', async () => {
+  if (!port?.writable) return;
+  const w = port.writable.getWriter();
+  await w.write(new TextEncoder().encode('stopscan\r\n'));
+  w.releaseLock();
+  log('> stopscan\n');
+});
+
+// Sidebar tabs
+document.querySelectorAll('.nav-item[data-panel]').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById(item.dataset.panel).classList.add('active');
+  });
+});
+
+// Keyboard
+cmdInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter')                      { sendCommand(); }
+  else if (e.ctrlKey && e.key.toLowerCase()==='c') { e.preventDefault(); sendCtrl(0x03,'C'); }
+  else if (e.ctrlKey && e.key.toLowerCase()==='x') { e.preventDefault(); sendCtrl(0x18,'X'); }
+  else if (e.ctrlKey && e.key.toLowerCase()==='z') { e.preventDefault(); sendCtrl(0x1A,'Z'); }
+  else if (e.ctrlKey && e.key.toLowerCase()==='d') { e.preventDefault(); sendCtrl(0x04,'D'); }
+});
+window.addEventListener('keydown', e => {
+  if (!e.ctrlKey || document.activeElement === cmdInput) return;
+  const k = e.key.toLowerCase();
+  if      (k==='c') { e.preventDefault(); sendCtrl(0x03,'C'); }
+  else if (k==='x') { e.preventDefault(); sendCtrl(0x18,'X'); }
+  else if (k==='z') { e.preventDefault(); sendCtrl(0x1A,'Z'); }
+  else if (k==='d') { e.preventDefault(); sendCtrl(0x04,'D'); }
+});
+
+// Copy / Clear / Export / Upload
+document.getElementById('copyBtn').addEventListener('click', async () => {
+  await navigator.clipboard.writeText(terminal.textContent).catch(()=>{});
+  const b = document.getElementById('copyBtn');
+  const orig = b.textContent;
+  b.textContent = 'COPIED!';
+  setTimeout(() => b.textContent = orig, 2000);
+});
+document.getElementById('clearBtn').addEventListener('click', () => terminal.textContent = '');
+
+// Quick status refresh (gets SD Card, WiFi, Firmware info)
+document.getElementById('sysRefreshBtn').addEventListener('click', () => {
+  sendCommandText('info');
+});
+
+document.getElementById('infoRefreshBtn').addEventListener('click', () => {
+  sendCommandText('info');
+});
+
+
+
+document.getElementById('fullscreenBtn').addEventListener('click', () => {
+  document.querySelector('.dash-shell').classList.toggle('fullscreen');
+});
+
+let currentFontSize = 14;
+document.getElementById('fontPlusBtn').addEventListener('click', () => {
+  if (currentFontSize < 32) currentFontSize += 2;
+  terminal.style.fontSize = currentFontSize + 'px';
+});
+document.getElementById('fontMinusBtn').addEventListener('click', () => {
+  if (currentFontSize > 8) currentFontSize -= 2;
+  terminal.style.fontSize = currentFontSize + 'px';
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([terminal.textContent],{type:'text/plain'})),
+    download: 'terminal_export.txt'
+  });
+  a.click();
+});
+
+// Old Console Upload Button
+const fileInput = document.getElementById('fileInput');
+document.getElementById('uploadBtn').addEventListener('click', () => fileInput.click());
+
+// File Manager Logic
+if (fmSelectBtn) fmSelectBtn.addEventListener('click', () => fileInput.click());
+
+document.getElementById('fmMkdirBtn').addEventListener('click', () => {
+  const folderName = prompt("Enter folder name:");
+  if (folderName) {
+    sendCommandText('mkdir ' + folderName);
+  }
+});
+
+document.getElementById('fmRefreshBtn').addEventListener('click', () => {
+  sendCommandText('list -a');
+});
+
+fileInput.addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  
+  const filesTabActive = document.getElementById('files-panel').classList.contains('active');
+  if (filesTabActive) {
+    const s = document.getElementById('fmSelectedFile');
+    if (s) s.textContent = file.name;
+    document.getElementById('fmDestPath').value = '/' + file.name;
+    document.getElementById('fmInitCmd').value = ''; 
+    document.getElementById('fmUploadBtn').disabled = !port?.writable;
+    document.getElementById('fmUploadUi').style.display = 'flex';
+    return;
+  }
+  
+  await streamFileToSerial(file, '');
+});
+
+if (fmUploadBtn) {
+  fmUploadBtn.addEventListener('click', async () => {
+    const file = fileInput.files[0];
+    if (!file || !port?.writable) return;
+    
+    document.querySelector('.nav-item[data-panel="console-panel"]').click();
+    
+    const initCmd = document.getElementById('fmInitCmd').value.trim();
+    if (initCmd) {
+      await sendCommandText(initCmd);
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    
+    await streamFileToSerial(file, ' to SD Card');
+    
+    document.getElementById('fmSelectedFile').textContent = 'No file';
+    fileInput.value = '';
+    fmUploadBtn.disabled = true;
+    document.getElementById('fmUploadUi').style.display = 'none';
+  });
+}
+
+async function sendCommandText(t) {
+  if (!t || !port?.writable) return;
+  const w = port.writable.getWriter();
+  await w.write(new TextEncoder().encode(t + '\r\n'));
+  w.releaseLock();
+  log('> ' + t + '\n');
+}
+
+async function streamFileToSerial(file, labelSuffix) {
+  const lines = (await file.text()).split('\n');
+  log(`\n--- Uploading ${file.name}${labelSuffix} (${lines.length} lines) ---\n`);
+  for (let ln of lines) {
+    ln = ln.trim(); if (!ln || !port?.writable) continue;
+    await sendCommandText(ln);
+    await new Promise(r => setTimeout(r, 100));
+  }
+  log('--- Upload Complete ---\n');
+  fileInput.value = '';
+}
+</script>
+</body>
+</html>

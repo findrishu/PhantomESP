@@ -1,0 +1,2695 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>PhantomESP CyberSerial</title>
+  <link rel="icon" type="image/png" href="assets/icons/skull.png">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #030303;
+      --panel: #080808;
+      --border: #1e1e1e;
+      --muted: #555;
+      --text: #aaa;
+      --bright: #ddd;
+      --red: #c00;
+      --red-hot: #ff2828;
+      --green: #00ff5a;
+      --mono: 'Share Tech Mono', monospace;
+      --vt: 'VT323', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      background-image:
+        linear-gradient(rgba(255, 0, 0, .025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 0, 0, .025) 1px, transparent 1px);
+      background-size: 20px 20px;
+      color: var(--text);
+      font-family: var(--mono);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── LAYOUT SHELL ────────────────────────────────────── */
+    .dash-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* ── HEADER ──────────────────────────────────────────── */
+    .dash-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 56px;
+      background: #000;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .dash-title {
+      font-family: var(--vt);
+      font-size: 28px;
+      color: var(--red);
+      letter-spacing: 5px;
+      animation: glitch 4s infinite;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+    }
+
+    .dash-title .cur {
+      color: #fff;
+      animation: blink 1s step-end infinite;
+    }
+
+    .dash-title:hover {
+      color: #fff;
+      text-shadow: 2px 0 cyan, -2px 0 var(--red);
+    }
+
+    .dash-device {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .dash-header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    /* ── BODY ────────────────────────────────────────────── */
+    .dash-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── SIDEBAR ─────────────────────────────────────────── */
+    .dash-nav {
+      width: 220px;
+      background: #000;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 16px 0;
+      flex-shrink: 0;
+      justify-content: space-between;
+    }
+
+    .dash-nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 0 12px;
+      margin-top: 16px;
+    }
+
+    .nav-item {
+      --bg: #000;
+      --hover-bg: #eee;
+      --hover-text: #000;
+      --shadow-color: rgba(255, 255, 255, 0.5);
+
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      background: var(--bg);
+      color: var(--muted);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: 0.2s;
+      font-size: 14px;
+      font-family: var(--vt);
+      letter-spacing: 1px;
+      width: 100%;
+      outline: none;
+    }
+
+    .nav-item svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      flex-shrink: 0;
+    }
+
+    .nav-item:hover,
+    .nav-item.active {
+      color: var(--hover-text);
+      background: var(--hover-bg);
+      border-color: var(--hover-bg);
+      transform: translate(-4px, -4px);
+      box-shadow: 4px 4px 0px var(--shadow-color);
+    }
+
+    .nav-item:active {
+      transform: translate(0);
+      box-shadow: none;
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 15%;
+      bottom: 15%;
+      width: 3px;
+      background: var(--red);
+      border-radius: 3px;
+    }
+
+    /* Fullscreen Mode */
+    .dash-shell.fullscreen .dash-header,
+    .dash-shell.fullscreen .dash-nav {
+      display: none !important;
+    }
+
+    .dash-shell.fullscreen .dash-content {
+      padding: 10px;
+    }
+
+    .dash-shell.fullscreen .panel {
+      max-width: none;
+    }
+
+    .dash-shell.fullscreen #terminal {
+      font-size: 16px;
+    }
+
+    .dash-device-card {
+      margin: 16px;
+      padding: 16px;
+      background: #0a0a0a;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    .dash-device-card h4 {
+      font-family: var(--vt);
+      font-size: 16px;
+      color: silver;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+
+    /* hw indicators */
+    .hw {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .hw .lbl {
+      color: var(--text);
+      font-weight: bold;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      background: var(--red);
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+
+    .dot.on {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+
+    .dot.err {
+      animation: blink-red 1s infinite;
+    }
+
+    #wifi-val {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    /* ── MAIN CONTENT ────────────────────────────────────── */
+    .dash-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+      align-items: center;
+      padding: 30px;
+    }
+
+    /* panels */
+    .panel {
+      display: none;
+      width: 100%;
+      max-width: 1200px;
+      flex: 1;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .panel.active {
+      display: flex;
+    }
+
+    /* ── CONSOLE PANEL ───────────────────────────────────── */
+    #console-panel {
+      gap: 12px;
+    }
+
+    #console-panel:hover #terminal-controls {
+      opacity: 1 !important;
+    }
+
+    #terminal {
+      flex: 1;
+      min-height: 200px;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      overflow: auto;
+      font-family: var(--mono);
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text);
+      white-space: pre;
+      word-break: normal;
+      overflow-wrap: normal;
+      letter-spacing: 0px;
+      tab-size: 8;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+    }
+
+    #terminal::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #terminal::-webkit-scrollbar-track {
+      background: #000;
+    }
+
+    #terminal::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 4px;
+    }
+
+    .scan-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0;
+      font-size: 13px;
+      font-family: var(--mono);
+      border: 1px solid var(--border);
+    }
+
+    .scan-table th,
+    .scan-table td {
+      border-bottom: 1px solid #222;
+      padding: 6px 12px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .scan-table th {
+      background: #080808;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
+
+    .scan-table tr:hover {
+      background: #111;
+    }
+
+    #shortcut-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 0;
+      flex-shrink: 0;
+    }
+
+    .pills {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      flex: 1;
+    }
+
+    .pill-label {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    .pill {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: rgba(255, 255, 255, .04);
+      border: 1px solid rgba(255, 255, 255, .08);
+      color: var(--muted);
+      padding: 4px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .pill:hover:not(:disabled) {
+      color: var(--bright);
+      border-color: rgba(255, 255, 255, .25);
+      background: rgba(255, 255, 255, .08);
+    }
+
+    .pill:disabled {
+      opacity: .25;
+      cursor: not-allowed;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* input row */
+    #input-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+
+    #cmdInput {
+      flex: 1;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--bright);
+      padding: 18px 20px;
+      font-family: var(--mono);
+      font-size: 18px;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    #cmdInput:focus {
+      border-color: var(--text);
+    }
+
+    /* Command autocomplete dropdown */
+    .autocomplete-list {
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      max-height: 260px;
+      overflow-y: auto;
+      background: #0a0a0a;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.7);
+      z-index: 20;
+    }
+
+    .autocomplete-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      padding: 8px 14px;
+      cursor: pointer;
+      border-bottom: 1px solid #151515;
+      font-family: var(--mono);
+    }
+
+    .autocomplete-item:last-child {
+      border-bottom: none;
+    }
+
+    .autocomplete-item .ac-cmd {
+      color: var(--green);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .autocomplete-item .ac-desc {
+      color: var(--muted);
+      font-size: 11px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    .autocomplete-item:hover,
+    .autocomplete-item.active {
+      background: #1a1a1a;
+    }
+
+    .autocomplete-item.active .ac-cmd {
+      color: #fff;
+    }
+
+    .dash-select {
+      background: #000;
+      color: var(--bright);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: var(--mono);
+      padding: 4px 8px;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .dash-select:hover {
+      color: #000;
+      background: #eee;
+      border-color: #eee;
+      transform: translate(-0.25rem, -0.25rem);
+      box-shadow: 0.25rem 0.25rem rgba(255, 255, 255, 0.5);
+    }
+
+    .dash-select option {
+      background: #050505;
+      color: var(--bright);
+    }
+
+    /* ── FILES PANEL ─────────────────────────────────────── */
+    .fm-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .fm-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      border-radius: 6px;
+    }
+
+    .fm-title {
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--bright);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+    }
+
+    .fm-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .fm-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .fm-btn:hover:not(:disabled) {
+      color: var(--bright);
+      border-color: rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .fm-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .fm-breadcrumb {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .fm-body {
+      flex: 1;
+      min-height: 300px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: var(--mono);
+      color: var(--muted);
+      position: relative;
+      overflow-y: auto;
+    }
+
+    .fm-footer {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 44px;
+    }
+
+    .loader {
+      border: 2px solid var(--border);
+      border-top: 2px solid var(--green);
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ── COMMAND CENTER PANEL ───────────────────────────────── */
+    .cat-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 12px 16px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 14px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .cat-btn:hover {
+      background: #111;
+      color: var(--text);
+      border-color: #333;
+    }
+
+    .cat-btn.active {
+      background: #111;
+      color: var(--green);
+      border-color: var(--green);
+    }
+
+    .cmd-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid #1a1a1a;
+    }
+
+    .cmd-item:last-child {
+      border-bottom: none;
+    }
+
+    .cmd-info {
+      flex: 1;
+      margin-right: 16px;
+    }
+
+    .cmd-title {
+      font-family: var(--mono);
+      font-weight: bold;
+      color: var(--green);
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .cmd-desc {
+      font-family: var(--mono);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .cmd-run-btn {
+      flex-shrink: 0;
+      padding: 6px 16px;
+      font-size: 12px;
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    .cmd-run-btn:hover:not(:disabled) {
+      background: var(--green);
+      color: #000;
+      box-shadow: 0.25rem 0.25rem var(--green);
+    }
+
+    #cmdInput:focus {
+      border-color: #555;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
+    }
+
+    #cmdInput::placeholder {
+      color: #444;
+    }
+
+    #cmdInput:disabled {
+      opacity: .3;
+    }
+
+    /* ── BUTTON STYLES (NEO-BRUTALISM) ───────────────────────── */
+    .btn,
+    .act,
+    #sendBtn {
+      --bg: #000;
+      --hover-bg: #eee;
+      --hover-text: #000;
+      --shadow-color: rgba(255, 255, 255, 0.5);
+
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: 0.2s;
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    #disconnectBtn,
+    #stopScanBtn {
+      --bg: #000;
+      --hover-bg: var(--red);
+      --hover-text: #fff;
+      --shadow-color: rgba(255, 40, 40, 0.5);
+
+      background: var(--bg);
+      color: var(--red);
+      border: 1px solid var(--red);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: 0.2s;
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:hover:not(:disabled),
+    .act:hover:not(:disabled),
+    #stopScanBtn:hover:not(:disabled) {
+      color: var(--hover-text) !important;
+      background: var(--hover-bg) !important;
+      border-color: var(--hover-bg) !important;
+      transform: translate(-0.25rem, -0.25rem);
+      box-shadow: 0.25rem 0.25rem var(--shadow-color);
+    }
+
+    .btn:active:not(:disabled),
+    .act:active:not(:disabled),
+    #sendBtn:active:not(:disabled),
+    #disconnectBtn:active:not(:disabled),
+    #stopScanBtn:active:not(:disabled) {
+      transform: translate(0);
+      box-shadow: none;
+    }
+
+    .btn:disabled,
+    .act:disabled,
+    #sendBtn:disabled,
+    #disconnectBtn:disabled,
+    #stopScanBtn:disabled {
+      opacity: .25;
+      cursor: not-allowed;
+      border-color: var(--border);
+      color: var(--muted);
+    }
+
+    /* specific button overrides */
+    .btn {
+      font-size: 12px;
+      padding: 8px 16px;
+    }
+
+    .act {
+      font-size: 11px;
+      padding: 6px 12px;
+    }
+
+    #sendBtn {
+      font-size: 14px;
+      padding: 0 24px;
+      color: var(--red);
+      border-color: rgba(204, 0, 0, .4);
+    }
+
+    #sendBtn:hover:not(:disabled) {
+      background: var(--red);
+      color: #000;
+      border-color: var(--red);
+      transform: translate(-0.25rem, -0.25rem);
+      box-shadow: 0.25rem 0.25rem var(--shadow-color);
+    }
+
+    #stopScanBtn {
+      font-size: 14px;
+      padding: 0 24px;
+      color: var(--red-hot);
+      border-color: rgba(255, 40, 40, .35);
+    }
+
+    #stopScanBtn:hover:not(:disabled) {
+      background: rgba(255, 40, 40, .1);
+      border-color: var(--red-hot);
+      box-shadow: 0 0 15px rgba(255, 40, 40, 0.2);
+    }
+
+    #disconnectBtn {
+      color: var(--red);
+      border-color: rgba(180, 0, 0, .4);
+    }
+
+    #disconnectBtn:hover:not(:disabled) {
+      background: rgba(180, 0, 0, .1);
+      border-color: var(--red);
+    }
+
+    /* ── FILES PANEL ─────────────────────────────────────── */
+    #files-panel {
+      gap: 20px;
+    }
+
+    .file-manager-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    .file-manager-header h3 {
+      font-family: var(--vt);
+      font-size: 24px;
+      color: silver;
+      letter-spacing: 3px;
+    }
+
+    .file-sections {
+      display: flex;
+      gap: 24px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .file-section {
+      flex: 1;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .file-section-title {
+      padding: 12px 16px;
+      background: #080808;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--text);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .file-upload-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .input-group label {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    .fm-input {
+      background: #050505;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--bright);
+      font-family: var(--mono);
+      font-size: 13px;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color .2s;
+    }
+
+    .fm-input:focus {
+      border-color: #555;
+    }
+
+    .fm-input::placeholder {
+      color: #333;
+    }
+
+    .file-list-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    #files-list {
+      list-style: none;
+    }
+
+    #files-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      transition: all .15s;
+      background: #050505;
+    }
+
+    .term-ctrl {
+      background: #111;
+      border: 1px solid #333;
+      color: #888;
+      cursor: pointer;
+      padding: 4px 10px;
+      font-size: 12px;
+      transition: 0.2s;
+    }
+
+    .term-ctrl:hover {
+      background: #eee;
+      color: #000;
+      transform: translate(-0.15rem, -0.15rem);
+      box-shadow: 0.15rem 0.15rem #000, 0.15rem 0.15rem 0 1px var(--border);
+    }
+
+    #files-list li:hover {
+      border-color: #555;
+      background: #080808;
+    }
+
+    .file-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .file-name {
+      color: var(--bright);
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* ── BOOT SCREEN ─────────────────────────────────────── */
+    #boot {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      transition: opacity 1s;
+    }
+
+    #boot pre {
+      font-family: 'Courier New', monospace;
+      font-size: min(1.6vw, 2vh, 9px);
+      line-height: 1.0;
+      white-space: pre;
+      letter-spacing: 0;
+    }
+
+    /* ── ANIMATIONS ──────────────────────────────────────── */
+    @keyframes glitch {
+
+      0%,
+      14%,
+      17%,
+      49%,
+      52%,
+      100% {
+        text-shadow: none;
+        transform: none;
+      }
+
+      15% {
+        text-shadow: 3px 0 var(--red), -3px 0 #aaa;
+        transform: translate(-2px, 1px);
+      }
+
+      16% {
+        text-shadow: -3px 0 var(--red), 3px 0 #aaa;
+        transform: translate(2px, -1px);
+      }
+
+      50% {
+        text-shadow: 3px 0 var(--red), -3px 0 #aaa;
+        transform: translate(1px, -1px);
+      }
+
+      51% {
+        text-shadow: -3px 0 var(--red), 3px 0 #aaa;
+        transform: translate(-1px, 1px);
+      }
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: 0;
+      }
+    }
+
+    @keyframes blink-red {
+
+      0%,
+      100% {
+        background: var(--red-hot);
+        box-shadow: 0 0 6px var(--red-hot);
+      }
+
+      50% {
+        background: #440000;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Boot Screen -->
+  <div id="boot">
+    <pre id="asciiArt"></pre>
+  </div>
+
+  <div class="dash-shell">
+    <!-- Top Nav -->
+    <header class="dash-header">
+      <div class="dash-title">PhantomESP<span class="cur">_</span></div>
+
+      <div class="dash-header-actions">
+        <select id="firmwareSelect" class="dash-select" title="Select Firmware">
+          <option value="" selected disabled>FW: Select...</option>
+          <option value="marauder">FW: Marauder</option>
+          <option value="ghostesp">FW: Ghost ESP</option>
+          <option value="bruce">FW: Bruce</option>
+          <option value="generic">FW: Generic ESP</option>
+        </select>
+        <select id="baudRate" class="dash-select">
+          <option value="115200">115200</option>
+          <option value="9600">9600</option>
+        </select>
+        <button class="btn" id="connectBtn">CONNECT SERIAL PORT</button>
+      </div>
+    </header>
+
+    <!-- Body -->
+    <div class="dash-body">
+
+      <!-- Sidebar -->
+      <aside class="dash-nav">
+        <nav class="sidebar-nav">
+          <button class="nav-item active" data-panel="console-panel">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 17 10 11 4 5"></polyline>
+              <line x1="12" y1="19" x2="20" y2="19"></line>
+            </svg>
+            <span>Console</span>
+          </button>
+          <button class="nav-item" data-panel="commands-panel">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+            </svg>
+            <span>Commands</span>
+          </button>
+          <button class="nav-item" data-panel="mirror-panel">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            <span>Virtual TFT</span>
+          </button>
+          <button class="nav-item" data-panel="files-panel">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Files</span>
+          </button>
+          <button class="nav-item" data-panel="info-panel">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>Device Info</span>
+          </button>
+        </nav>
+
+        <div class="dash-device-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h4 style="margin:0;">// SYS_STATUS</h4>
+            <button class="act" id="sysRefreshBtn" style="padding:4px 8px; font-size:12px; height:24px;"
+              title="Check SD Card" disabled>↻</button>
+          </div>
+          <div class="hw"><span class="lbl">SERIAL</span><span id="conn-text"
+              style="color:var(--muted);">DISCONNECTED</span>
+            <div class="dot" id="conn-dot"></div>
+          </div>
+          <div class="hw"><span class="lbl">SD CARD</span>
+            <div class="dot" id="sd-dot"></div>
+          </div>
+          <div class="hw"><span class="lbl">RF ADD-ON <span id="ant-type"
+                style="font-size:9px; color:var(--muted); margin-left:4px;"></span></span>
+            <div class="dot" id="ant-dot"></div>
+          </div>
+          <div class="hw" style="align-items:center;">
+            <span class="lbl" style="display:flex; align-items:center; gap:4px;">ANT. TYPE
+              <span
+                title="Whether this board has an internal PCB antenna or an IPEX/UFL connector for an external antenna. This is fixed hardware — it can't be detected from signal strength, so pick it once for your board."
+                style="cursor:help; color:var(--muted); font-size:10px;">ⓘ</span>
+            </span>
+            <select id="antTypeSelect" class="dash-select" style="font-size:10px; padding:2px 6px; height:22px;">
+              <option value="internal">Internal (PCB)</option>
+              <option value="ipex">External (IPEX)</option>
+            </select>
+          </div>
+          <div class="hw"><span class="lbl">WIFI RSSI <span id="ant-type-tag"
+                style="font-size:9px; color:var(--muted); margin-left:4px;"></span></span><span id="wifi-val">--
+              dBm</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main -->
+      <main class="dash-content">
+
+        <!-- Console Panel -->
+        <div id="console-panel" class="panel active" style="position:relative;">
+          <div id="terminal-controls"
+            style="position:absolute; top:12px; right:24px; display:flex; gap:6px; opacity:0.3; transition:0.3s; z-index:10;">
+            <button class="act" id="fontMinusBtn" title="Zoom Out"
+              style="padding:4px 8px; font-size:12px; background:rgba(0,0,0,0.8);">A-</button>
+            <button class="act" id="fontPlusBtn" title="Zoom In"
+              style="padding:4px 8px; font-size:12px; background:rgba(0,0,0,0.8);">A+</button>
+            <button class="act" id="fullscreenBtn"
+              style="padding:4px 8px; font-size:12px; background:rgba(0,0,0,0.8);">⛶ FULL</button>
+          </div>
+          <div id="terminal-wrap" style="position:relative; flex:1; min-height:200px; display:flex;">
+            <div id="terminal"></div>
+            <button id="jumpToBottomBtn" type="button"
+              style="display:none; position:absolute; bottom:14px; right:24px; z-index:11; background:var(--green); color:#000; border:none; border-radius:20px; padding:6px 14px; font-family:var(--mono); font-size:12px; font-weight:bold; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.6);">
+              ↓ NEW OUTPUT — JUMP TO BOTTOM
+            </button>
+          </div>
+
+          <div id="shortcut-row" style="margin-top: 8px; margin-bottom: 8px;">
+            <div class="pills" id="quickPills">
+              <span class="pill-label">QUICK:</span>
+              <!-- dynamically generated -->
+            </div>
+            <div class="actions">
+              <button class="act" id="copyBtn">COPY</button>
+              <button class="act" id="clearBtn">CLEAR</button>
+              <button class="act" id="exportBtn">EXPORT</button>
+              <button class="act" id="uploadBtn">UPLOAD</button>
+            </div>
+          </div>
+
+          <div id="input-row" style="margin-bottom: 4px;">
+            <div id="cmdInputWrap" style="position:relative; flex:1;">
+              <div id="cmdAutocomplete" class="autocomplete-list" style="display:none;"></div>
+              <input id="cmdInput" style="width:100%;"
+                placeholder="Enter command... (e.g. list -a, select -a 0) — ↑/↓ history, Tab/Enter to autocomplete"
+                autocomplete="off" spellcheck="false" disabled>
+            </div>
+            <button id="sendBtn" disabled>SEND</button>
+            <button id="stopScanBtn" disabled>■ STOP SCAN</button>
+          </div>
+        </div>
+
+        <!-- Commands Panel -->
+        <div id="commands-panel" class="panel">
+          <div
+            style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+            <h3 style="font-family: var(--vt); font-size: 24px; color: silver; letter-spacing: 3px;">// COMMAND CENTER
+            </h3>
+            <input type="text" id="cmdSearch" class="fm-input" placeholder="Search commands..." style="width: 250px;">
+          </div>
+
+          <div style="display:flex; gap:20px; flex:1; overflow:hidden;">
+            <!-- Categories -->
+            <div style="width:200px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; padding-right:8px;"
+              id="cmdCategories">
+              <!-- Dynamically populated -->
+            </div>
+            <!-- Command List -->
+            <div
+              style="flex:1; background:#050505; border:1px solid var(--border); border-radius:6px; overflow-y:auto; padding:16px;"
+              id="cmdList">
+              <!-- Dynamically populated -->
+              <div style="color:var(--muted); text-align:center; margin-top:40px; font-family:var(--mono);">Select a
+                category from the left</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mirror / Virtual TFT Panel -->
+        <div id="mirror-panel" class="panel">
+          <div class="mirror-container" style="display:flex; flex:1; gap:24px; height:100%; overflow:hidden;">
+            <!-- Screen Area -->
+            <div class="mirror-screen" id="tft-screen"
+              style="flex:1; background:#000; border:1px solid var(--border); border-radius:6px; display:flex; flex-direction:column; position:relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); overflow:hidden;">
+              <div id="tft-title"
+                style="background:var(--panel); color:var(--green); font-family:var(--vt); font-size:24px; padding:12px; border-bottom:2px solid var(--green); text-align:center; letter-spacing:2px; text-transform:uppercase;">
+                NO SIGNAL
+              </div>
+              <div id="tft-list"
+                style="flex:1; padding:12px; display:flex; flex-direction:column; gap:4px; overflow-y:auto; font-family:var(--mono); font-size:16px;">
+                <div style="color:var(--muted); text-align:center; margin-top:40px;">Awaiting [TFT] serial data...</div>
+              </div>
+            </div>
+
+            <!-- Controls Area -->
+            <div class="mirror-controls"
+              style="width:240px; display:flex; flex-direction:column; gap:24px; align-items:center; justify-content:center; background:#080808; border:1px solid var(--border); border-radius:6px; padding:24px; flex-shrink:0;">
+              <!-- D-Pad -->
+              <div class="dpad"
+                style="display:grid; grid-template-columns:repeat(3, 48px); grid-gap:8px; justify-content:center;">
+                <div></div>
+                <button class="act tft-btn" data-key="up" style="height:48px; font-size:16px;">▲</button>
+                <div></div>
+                <button class="act tft-btn" data-key="left" style="height:48px; font-size:16px;">◀</button>
+                <button class="act tft-btn" data-key="center" style="height:48px; font-size:10px;">●</button>
+                <button class="act tft-btn" data-key="right" style="height:48px; font-size:16px;">▶</button>
+                <div></div>
+                <button class="act tft-btn" data-key="down" style="height:48px; font-size:16px;">▼</button>
+                <div></div>
+              </div>
+              <div
+                style="font-size:12px; color:var(--muted); font-family:var(--mono); text-align:center; letter-spacing:1px;">
+                WASD / Arrows to Navigate</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Files Panel -->
+        <div id="files-panel" class="panel">
+          <div class="fm-container">
+
+            <div class="fm-header">
+              <div class="fm-title">
+                <div class="dot on"></div> SD CARD
+              </div>
+              <div class="fm-actions">
+                <button class="fm-btn" id="fmRefreshBtn">↻ Refresh</button>
+                <button class="fm-btn" id="fmSelectBtn">+ Upload</button>
+                <button class="fm-btn" id="fmMkdirBtn">+ Folder</button>
+                <input type="file" id="fileInput" style="display:none">
+              </div>
+            </div>
+
+            <div class="fm-breadcrumb" id="fmBreadcrumb">
+              / &gt; mnt
+            </div>
+
+            <div class="fm-body" id="fmBody">
+              <div id="fmEmpty" style="display:flex; align-items:center; gap:8px;">
+                <div class="loader"></div>
+                <div>Loading...</div>
+              </div>
+            </div>
+
+            <div class="fm-footer">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="color:var(--green)">Mounted</span> &nbsp;--&nbsp; <span id="fmStats">0 folders, 0
+                  files</span>
+              </div>
+
+              <div id="fmUploadUi" style="display:none; align-items:center; gap:8px;">
+                <span id="fmSelectedFile" style="color:var(--text);">No file</span>
+                <input type="text" id="fmDestPath"
+                  style="background:transparent; border:1px solid var(--border); color:var(--text); padding:4px 8px; font-size:12px; border-radius:4px; outline:none;"
+                  placeholder="/filename.bin">
+                <input type="text" id="fmInitCmd" style="display:none;" value="">
+                <button class="fm-btn" id="fmUploadBtn" style="border-color:var(--green); color:var(--green);">START
+                  UPLOAD</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div id="info-panel" class="panel">
+          <h3
+            style="font-family: var(--vt); font-size: 24px; color: silver; letter-spacing: 3px; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 16px;">
+            // DEVICE INFORMATION</h3>
+          <div
+            style="background:#050505; border:1px solid var(--border); border-radius:6px; padding:24px; font-family:var(--mono); color:var(--text); font-size:14px; line-height:1.8; max-width: 600px;">
+            <p style="color:var(--muted); font-size:12px; margin-bottom:16px;">Run <strong
+                style="color:silver">sysinfo</strong> to populate these fields if they don't automatically appear.</p>
+
+            <div
+              style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+              <span style="color:var(--muted);">FIRMWARE</span>
+              <span id="info-fw">Awaiting Data...</span>
+            </div>
+            <div
+              style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+              <span style="color:var(--muted);">VERSION</span>
+              <span id="info-ver">--</span>
+            </div>
+            <div
+              style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+              <span style="color:var(--muted);">HARDWARE (ESP MODEL)</span>
+              <span id="info-hw">ESP32</span>
+            </div>
+            <div
+              style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+              <span style="color:var(--muted);">ESP-IDF</span>
+              <span id="info-espidf">--</span>
+            </div>
+            <div
+              style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+              <span style="color:var(--muted);">WSL BYPASS</span>
+              <span id="info-wsl">--</span>
+            </div>
+            <div
+              style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+              <span style="color:var(--muted);">STATION MAC</span>
+              <span id="info-stamac">--:--:--:--:--:--</span>
+            </div>
+            <div
+              style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+              <span style="color:var(--muted);">AP MAC</span>
+              <span id="info-apmac">--:--:--:--:--:--</span>
+            </div>
+            <div
+              style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+              <span style="color:var(--muted);">SD CARD INFO</span>
+              <span id="info-sd">--</span>
+            </div>
+            <div
+              style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+              <span style="color:var(--muted);">BATTERY MONITOR</span>
+              <span id="info-batt">--</span>
+            </div>
+            <div
+              style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+              <span style="color:var(--muted);">RAM / HEAP</span>
+              <span id="info-ram">--</span>
+            </div>
+            <div
+              style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+              <span style="color:var(--muted);">WIFI SSID / NAME</span>
+              <span id="info-wifi">--</span>
+            </div>
+            <div
+              style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+              <span style="color:var(--muted);">PINS / GPIO</span>
+              <span id="info-pins">--</span>
+            </div>
+            <div
+              style="display:flex; justify-content:space-between; border-bottom:1px solid #1a1a1a; padding-bottom:8px; margin-bottom:12px;">
+              <span style="color:var(--muted);">BLUETOOTH</span>
+              <span id="info-bt">--</span>
+            </div>
+            <button class="btn" id="infoRefreshBtn"
+              style="margin-top:16px; width:100%; justify-content:center; border-color:var(--green); color:var(--green);"
+              disabled>FETCH SYSINFO</button>
+          </div>
+
+          <h3
+            style="font-family: var(--vt); font-size: 24px; color: var(--red); letter-spacing: 3px; margin-top: 32px; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 16px;">
+            // IDENTITY SPOOFER (MAC)</h3>
+
+          <div
+            style="background:#050505; border:1px solid var(--border); border-radius:6px; padding:24px; max-width: 600px;">
+            <p style="color:var(--muted); font-size:14px; margin-bottom:16px;">Mask your original hardware MAC address
+              to hide your identity. Changes revert on reboot.</p>
+
+            <div style="display:flex; gap: 12px; margin-bottom: 16px;">
+              <select id="macSpoofSelect" class="dash-select" style="flex:1;">
+                <option value="00:11:22:33:44:55">00:11:22:33:44:55 (Standard Fake)</option>
+                <option value="DE:AD:BE:EF:C0:FE">DE:AD:BE:EF:C0:FE (Dead Beef)</option>
+                <option value="AA:BB:CC:DD:EE:FF">AA:BB:CC:DD:EE:FF (All Caps)</option>
+                <option value="12:34:56:78:90:AB">12:34:56:78:90:AB (Sequential)</option>
+                <option value="42:42:42:42:42:42">42:42:42:42:42:42 (The Answer)</option>
+                <option value="BA:AD:F0:0D:CA:FE">BA:AD:F0:0D:CA:FE (Bad Food Cafe)</option>
+              </select>
+              <button class="btn" id="macGenBtn" style="white-space: nowrap;">GENERATE RANDOM</button>
+            </div>
+
+            <input type="text" id="macCustomInput" class="dash-select"
+              placeholder="Or enter custom MAC (e.g. 1A:2B:3C:4D:5E:6F)" style="width: 100%; margin-bottom: 16px;">
+
+            <div style="display:flex; gap: 12px;">
+              <button class="btn" id="spoofApBtn"
+                style="flex:1; justify-content:center; border-color:var(--red); color:var(--red);" disabled>SPOOF AP
+                MAC</button>
+              <button class="btn" id="spoofStaBtn"
+                style="flex:1; justify-content:center; border-color:var(--bright); color:var(--bright);" disabled>SPOOF
+                STA MAC</button>
+            </div>
+          </div>
+
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Boot Animation -->
+  <script>
+    (function () {
+      const lines = [
+        "                                                                                                    ",
+        "                                                                                                    ",
+        "                                                                                                    ",
+        "                                                                                                    ",
+        "                                                                                                    ",
+        "                                                                                                    ",
+        "                                                                                                    ",
+        "                                                                                                    ",
+        "                                                                                                    ",
+        "                                                 =                                                  ",
+        "                                        ..:-:..-:=.-: .---. ::.                                     ",
+        "                                       *+=+#*+=#*=*#*++###*=*#*-+-                                  ",
+        "                                    .+*****#***#***+++*#****+***.                                   ",
+        "                                   ..+############*+++*#*+*#*+**.                                   ",
+        "                                   +***+***+***+++*###*########*-:                                  ",
+        "                                 :=++****#*****+++*#*****#######++=:                                ",
+        "                                 .-*########*+++++*#*+++*########*=.                                ",
+        "                                 ::..  ::::**=*+++++*=*###**#*-:#*=.                                ",
+        "                                 .:        ..-..-+++=-=*:...... ..:.                                ",
+        "                                              .++:++*:=-.                                           ",
+        "                                +             .++=====:             ::                              ",
+        "                               .=::.        .::----==-.           ..::                              ",
+        "                               =*+*.      .++*+*+++++=.          :=+                                ",
+        "                               :-+*--.. ...==++===--+***=:......=--:                                ",
+        "                               -=+*====::====++++---+***==::::::=-=-                                ",
+        "                               =+*########*+*=+     .==+*#*###*#+*=+                                ",
+        "                               ..-=====###*:.:.     .:.:+####*+=::..                                ",
+        "                                 ::.-:=###**=.        -+**#*#*+=+=..                                ",
+        "                                 ...=:.++****=:***=:..=***++=-. .-                                  ",
+        "                                 ...=.-==+**+==***++=+=***==--...-                                  ",
+        "                                 .:..+***++*********#=*+****-:-=                                    ",
+        "                                 .. ..:=-++...:===+*+:=***+--:--.-                                  ",
+        "                                .::....=+#+.... :--*+=#***=:=+*+.-                                  ",
+        "                                .=***==*+..***+  -=*-=. :=+*:-  -:.                                 ",
+        "                                .:-**:.**+=---:.:+=-::....:---..--                                  ",
+        "                                 :-**++****.- .+**+=:*++==+=+*+=+-                                  ",
+        "                                   :-**-=*****+:..-*=.-*:                                           ",
+        "                                    .==-=+*###+*-:=#++=*:......                                     ",
+        "                                      .+*+*########*:   .###*+=.                                    ",
+        "                                       .:---=+*+:----====--::::.                                    ",
+        "                                        .-=++++=.   -====.                                          ",
+        "                                             :                                                      ",
+        "                                                                                                    ",
+        "                                                                                                    ",
+        "                                                                                                    ",
+        "                    ####  *   *  +++  =   = -----  ###  *   *   +++++ ===== ####                    ",
+        "                    #   # *   * +   + ==  =   -   #   # ** **   +     =     #   #                   ",
+        "                    ####  ***** +++++ = = =   -   #   # * * *   ++++   ===  ####                    ",
+        "                    #     *   * +   + =  ==   -   #   # *   *   +         = #                       ",
+        "                    #     *   * +   + =   =   -    ###  *   *   +++++ ===== #                       ",
+        "                                                                                                    "
+      ];
+      const el = document.getElementById('asciiArt');
+      const grid = lines.map(l => l.split(''));
+      const rows = grid.length;
+      const cols = Math.max(...grid.map(r => r.length));
+      for (let r = 0; r < rows; r++) while (grid[r].length < cols) grid[r].push(' ');
+      let cells = [];
+      for (let r = 0; r < rows; r++)
+        for (let c = 0; c < cols; c++)
+          if (grid[r][c] !== ' ') cells.push({ r, c });
+      function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
+      const order = shuffle(cells.slice());
+      let colorGrid = [];
+      for (let r = 0; r < rows; r++) colorGrid.push(new Array(cols).fill(null));
+      let revealed = 0, phase = 'reveal', colorT = 0, flickerFrame = 0, bootFinished = false;
+      const W = '#ffffff', R = '#ff2828', GF = 14;
+      function render() {
+        let html = '';
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const ch = grid[r][c], col = colorGrid[r][c];
+            html += (ch === ' ' || !col) ? ' ' : '<span style="color:' + col + ';text-shadow:0 0 4px ' + col + '">' + ch + '</span>';
+          }
+          html += '\n';
+        }
+        el.innerHTML = html;
+      }
+      function animate() {
+        if (bootFinished) return;
+        if (phase === 'reveal') {
+          for (let i = 0; i < Math.floor(revealed) && i < order.length; i++) { const p = order[i]; if (!colorGrid[p.r][p.c]) colorGrid[p.r][p.c] = W; }
+          revealed += 30;
+          if (revealed >= order.length) { for (let i = 0; i < order.length; i++)colorGrid[order[i].r][order[i].c] = W; phase = 'hold'; setTimeout(() => { phase = 'colorshift'; }, 500); }
+        } else if (phase === 'colorshift') {
+          colorT++;
+          const col = colorT < GF ? (colorT % 4 < 2 ? W : R) : R;
+          for (let i = 0; i < order.length; i++)colorGrid[order[i].r][order[i].c] = col;
+          if (colorT >= GF) { phase = 'done'; setTimeout(() => { const b = document.getElementById('boot'); b.style.opacity = '0'; setTimeout(() => { b.style.display = 'none'; bootFinished = true; }, 1000); }, 1500); }
+        } else if (phase === 'done') {
+          flickerFrame++;
+          for (let i = 0; i < order.length; i++) { const p = order[i]; const a = Math.max(0.4, 0.8 + 0.2 * Math.sin(flickerFrame * .1 + i * .5)); colorGrid[p.r][p.c] = 'rgba(255,40,40,' + a + ')'; }
+        }
+        render(); requestAnimationFrame(animate);
+      }
+      animate();
+    })();
+  </script>
+
+  <script>
+    const firmwareCommands = {
+      marauder: [
+        { name: "HELP", cmd: "help" },
+        { name: "SCAN AP/STA", cmd: "scanall" },
+        { name: "STOP SCAN", cmd: "stopscan" },
+        { name: "LIST -A", cmd: "list -a" },
+        { name: "SELECT -A", cmd: "select -a " },
+        { name: "DEAUTH", cmd: "attack -t deauth" },
+        { name: "BEACON SPAM", cmd: "attack -t beacon -r" },
+        { name: "PROBE SPAM", cmd: "attack -t probe" },
+        { name: "RICKROLL", cmd: "attack -t rickroll" },
+        { name: "SNIFF DEAUTH", cmd: "sniffdeauth" },
+        { name: "SIGMON", cmd: "sigmon" },
+        { name: "SOUR APPLE", cmd: "sourapple" },
+        { name: "SWIFTPAIR SPAM", cmd: "swiftpair" },
+        { name: "BT SPAM ALL", cmd: "btspamall" },
+        { name: "SYS INFO", cmd: "info" }
+      ],
+      ghostesp: [
+        { name: "HELP", cmd: "help" },
+        { name: "SCAN AP", cmd: "scanap" },
+        { name: "DEAUTH", cmd: "attack -d" },
+        { name: "EAPOL LOGOFF", cmd: "attack -e" },
+        { name: "BEACON SPAM", cmd: "beaconspam -r" },
+        { name: "STOP DEAUTH", cmd: "stopdeauth" },
+        { name: "STOP SPAM", cmd: "stopspam" },
+        { name: "PINEAPPLE DETECT", cmd: "pineap" },
+        { name: "CAP EAPOL", cmd: "capture -eapol" },
+        { name: "KARMA", cmd: "karma start" },
+        { name: "STOP SCAN", cmd: "stopscan" }
+      ],
+      bruce: [
+        { name: "HELP", cmd: "help" },
+        { name: "INFO", cmd: "info" },
+        { name: "SETTINGS", cmd: "settings" },
+        { name: "FREE RAM", cmd: "free" },
+        { name: "UPTIME", cmd: "uptime" },
+        { name: "DATE", cmd: "date" },
+        { name: "WEB UI", cmd: "webui" }
+      ],
+      generic: [
+        { name: "HELP", cmd: "help" },
+        { name: "INFO", cmd: "info" }
+      ]
+    };
+
+    // NOTE ON SCOPE: These are the stock CLI commands documented by each firmware's own
+    // project (justcallmekoko/ESP32Marauder, Ghost_ESP, BruceDevices/firmware) - this panel
+    // only labels/organizes commands the firmware already ships with, it doesn't add new
+    // attack capability. "Attacks (Offensive)" transmit frames that affect OTHER devices in
+    // range (deauth, beacon/probe floods, BLE spam, etc.) - only ever run these against your
+    // own AP/hardware or a network you have written authorization to test; unauthorized use
+    // against third-party networks is illegal in most jurisdictions (India: IT Act 2000
+    // Sections 43/66). "Defense / Detection" commands are passive/monitoring - they listen
+    // for and flag attacks (deauth floods, rogue APs, skimmers, trackers) rather than send
+    // anything, so they're safe to run anywhere to audit or monitor your own environment.
+    const advancedCommands = {
+      marauder: {
+        "Scanning & Recon": [
+          { cmd: "scanall", desc: "Scan for both APs and Stations at once." },
+          { cmd: "scanap", desc: "Scan for nearby Access Points (WiFi networks)." },
+          { cmd: "scansta", desc: "Scan for Stations (client devices) associated with APs." },
+          { cmd: "pingscan", desc: "Ping-sweep a subnet to find live hosts once you've joined a network." },
+          { cmd: "arpscan", desc: "ARP-sweep the local subnet to map connected devices." },
+          { cmd: "portscan", desc: "Port-scan a target host found during a scan." },
+          { cmd: "mactrack", desc: "Track a specific MAC address and alert when it's seen." },
+          { cmd: "stopscan", desc: "Stop any ongoing scan, sniff, or attack." }
+        ],
+        "WiFi Attacks (Offensive)": [
+          { cmd: "attack -t deauth", desc: "Deauth flood/targeted attack — kicks stations off the selected AP(s).", hint: "Run scanap -> select -a first. Add -c to also target selected stations." },
+          { cmd: "attack -t deauth -s AA:BB:CC:DD:EE:FF -d AA:BB:CC:DD:EE:FF", desc: "Manual deauth with hand-picked source/destination MAC — no scan needed.", input: "-s <MAC> -d <MAC>" },
+          { cmd: "attack -t probe", desc: "Probe request flood against selected APs.", hint: "Run scanap -> select -a first." },
+          { cmd: "attack -t beacon -r", desc: "Beacon spam with randomly generated SSIDs." },
+          { cmd: "attack -t beacon -l", desc: "Beacon spam using your own saved SSID list.", hint: "Build a list with ssid -a or ssid -g first." },
+          { cmd: "attack -t beacon -a", desc: "AP clone spam — copies a real scanned AP's SSID/BSSID.", hint: "Run scanap -> select -a first." },
+          { cmd: "attack -t rickroll", desc: "Beacon spam using Rick Astley lyric SSIDs, just for fun." },
+          { cmd: "attack -t badmsg", desc: "Sends malformed 802.11 management frames to selected APs." },
+          { cmd: "attack -t sleep", desc: "Association Sleep attack — tricks a station into a low-power sleep state, dropping its connection." },
+          { cmd: "attack -t sae", desc: "SAE Commit flood — targets WPA3 networks by flooding SAE handshake commits." },
+          { cmd: "attack -t csa", desc: "Channel Switch Announcement attack — forces clients of the selected AP to hop channels." },
+          { cmd: "attack -t quiet", desc: "Quiet Time attack — tells clients of the selected AP to go silent for a period." },
+          { cmd: "evilportal -c start", desc: "Start the Evil Portal captive-login page." },
+          { cmd: "karma", desc: "Karma attack — answers client probe requests to lure devices into connecting." }
+        ],
+        "Defense / Detection": [
+          { cmd: "sniffdeauth", desc: "Passively detect deauth frames in the air — use to spot a deauth attack happening around you." },
+          { cmd: "sniffbeacon", desc: "Log beacon frames from nearby APs (SSID changes, rogue APs)." },
+          { cmd: "sniffprobe", desc: "Log probe requests from nearby devices." },
+          { cmd: "sniffraw", desc: "Dump all raw 802.11 traffic on the current channel for analysis." },
+          { cmd: "sniffesp", desc: "Detect other ESP32/ESP8266 devices transmitting management frames nearby." },
+          { cmd: "sniffpwn", desc: "Detect Pwnagotchi devices operating in the area." },
+          { cmd: "sniffsae", desc: "Monitor WPA3 SAE handshake traffic (useful for auditing your own AP's WPA3 setup)." },
+          { cmd: "sniffpmkid", desc: "Capture PMKID from a handshake for offline auditing of your own network's password strength.", hint: "Only run against APs you own/are authorized to audit." },
+          { cmd: "sigmon", desc: "Signal Monitor — graphs RSSI of a selected AP over time, useful for spotting jamming/interference." },
+          { cmd: "packetcount", desc: "Display a live count of captured packets per type." }
+        ],
+        "Bluetooth Attacks (Offensive)": [
+          { cmd: "btspamall", desc: "Spam every supported BLE popup payload at once (Apple/Samsung/Windows/Google)." },
+          { cmd: "sourapple", desc: "Apple BLE spam — triggers iOS pairing/crash popups nearby." },
+          { cmd: "swiftpair", desc: "Windows Swift Pair spam — triggers Windows BLE pairing popups." },
+          { cmd: "samsungblespam", desc: "Samsung BLE spam — triggers Galaxy device pairing popups." },
+          { cmd: "spoofat", desc: "Spoof Apple AirTag BLE broadcasts." }
+        ],
+        "Bluetooth Defense / Detection": [
+          { cmd: "sniffbt", desc: "Passively sniff and list nearby Bluetooth/BLE devices and packets." },
+          { cmd: "btwardrive", desc: "Bluetooth wardrive — log BLE devices with GPS position as you move (requires GPS/SD)." },
+          { cmd: "findmy", desc: "Listen for and interact with Apple's FindMy BLE network." }
+        ],
+        "GPS / Wardriving": [
+          { cmd: "wardrive", desc: "Start WiFi wardriving — logs APs with GPS coordinates (requires GPS/SD)." },
+          { cmd: "gpstracker -c start", desc: "Start the GPS tracker." },
+          { cmd: "gpsdata", desc: "Show current GPS fix data." },
+          { cmd: "nmea", desc: "Show raw NMEA sentences from the GPS module." }
+        ],
+        "Target / AP Management": [
+          { cmd: "list -a", desc: "List currently stored APs from memory." },
+          { cmd: "list -s", desc: "List currently stored Stations from memory." },
+          { cmd: "select -a", desc: "Select an AP by index for later attacks.", input: "Index (e.g. 0)", hint: "Run scanap/list -a first." },
+          { cmd: "select -s", desc: "Select a Station by index for later attacks.", input: "Index (e.g. 0)", hint: "Run scansta/list -s first." },
+          { cmd: "clearlist -a", desc: "Clear all saved APs from memory." },
+          { cmd: "clearlist -s", desc: "Clear all saved Stations from memory." }
+        ],
+        "SSID Management": [
+          { cmd: "ssid -a", desc: "Add an SSID to your custom list.", input: "SSID Name", hint: "Used for beacon spamming (attack -t beacon -l)." },
+          { cmd: "ssid -g", desc: "Generate random SSIDs and add to the list.", input: "Quantity (e.g. 10)" },
+          { cmd: "ssid -p", desc: "Print/list stored SSIDs." },
+          { cmd: "ssid -c", desc: "Clear stored SSIDs." },
+          { cmd: "load", desc: "Load saved APs or SSIDs from a file.", input: "Filename" },
+          { cmd: "save", desc: "Save current APs/SSIDs to SD.", input: "Filename" }
+        ],
+        "System": [
+          { cmd: "info", desc: "Show system info (firmware version, MAC, SD card status)." },
+          { cmd: "channel", desc: "Set or view the current WiFi channel.", input: "Channel (1-14)", hint: "Leave blank to just read the current channel." },
+          { cmd: "join", desc: "Connect to a WiFi network.", input: "SSID", hint: "Will prompt for a password if needed." },
+          { cmd: "led", desc: "Set LED color.", input: "-s RRGGBB or -p rainbow" },
+          { cmd: "settings", desc: "Show/change current device settings.", input: "-s <setting> enable/disable" },
+          { cmd: "ls /sd", desc: "List files on the SD card." },
+          { cmd: "update", desc: "Update firmware (OTA or via serial).", input: "-s (serial) or -w (web)" },
+          { cmd: "reboot", desc: "Restart the device." }
+        ]
+      },
+      ghostesp: {
+        "Scanning & Recon": [
+          { cmd: "scanap", desc: "Scan for nearby Access Points.", input: "seconds / -live / -stop (optional)" },
+          { cmd: "scansta", desc: "Hop channels and log stations associated with APs." },
+          { cmd: "scanall", desc: "Combined AP + Station scan with a summary." },
+          { cmd: "scanlocal", desc: "Look up local network / IP info once connected." },
+          { cmd: "scanarp", desc: "ARP-scan the local subnet for connected devices." },
+          { cmd: "scanports", desc: "Port-scan the local subnet or a specific host.", input: "local|<ip> [all|start-end]" },
+          { cmd: "scanssh", desc: "Discover SSH hosts on the network.", input: "<ip>" },
+          { cmd: "netbiosscan", desc: "Discover Windows hosts via NetBIOS Name Service queries.", input: "subnet [a.b.c.] or <ip>" },
+          { cmd: "stopscan", desc: "Stop any active AP scan." }
+        ],
+        "WiFi Attacks (Offensive)": [
+          { cmd: "attack -d", desc: "Deauthentication attack against the selected AP(s).", hint: "Run scanap -> select -a first." },
+          { cmd: "attack -e", desc: "EAPOL Logoff attack — forces authenticated clients to disconnect." },
+          { cmd: "attack -c", desc: "Channel Switch Announcement (CSA) attack — forges beacons directing clients to a different channel." },
+          { cmd: "attack -s", desc: "SAE flood attack targeting WPA3 networks.", input: "target PSK", hint: "Needs ESP32-C5/C6 hardware." },
+          { cmd: "attack -g", desc: "GTK abuse attack against the selected AP." },
+          { cmd: "beaconspam -r", desc: "Beacon spam with random fake SSIDs." },
+          { cmd: "beaconspam -rr", desc: "Beacon spam with Rick Astley-themed SSIDs." },
+          { cmd: "beaconspam -l", desc: "Beacon spam cloning every visible nearby network." },
+          { cmd: "beaconspamlist", desc: "Beacon spam using your saved SSID list.", hint: "Manage with beaconadd/beaconremove/beaconclear/beaconshow." },
+          { cmd: "karma start", desc: "Karma attack — responds to probe requests to lure clients to connect." },
+          { cmd: "dhcpstarve", desc: "DHCP starvation — floods a DHCP server to exhaust its address leases.", input: "start [threads] / stop / display" },
+          { cmd: "startportal", desc: "Start an Evil Portal captive login page.", input: "see docs: online or offline mode args", hint: "Online: <url> <wifi-ssid> <wifi-pass> <portal-name> <fake-domain>" },
+          { cmd: "stopdeauth", desc: "Stop an active deauth/EAPOL/SAE/CSA/GTK attack." },
+          { cmd: "stopspam", desc: "Stop an active beacon spam." }
+        ],
+        "Defense / Detection": [
+          { cmd: "pineap", desc: "Monitor for WiFi Pineapple-style beacons and Evil Twin APs.", input: "-s to stop" },
+          { cmd: "congestion", desc: "Show a live WiFi channel congestion chart across all channels." },
+          { cmd: "listenprobes", desc: "Passively monitor probe requests from nearby devices.", input: "channel or stop" },
+          { cmd: "capture -deauth", desc: "Capture deauth frames to SD — diagnose disconnect storms or targeted kicks." },
+          { cmd: "capture -beacon", desc: "Capture beacon frames to review advertised SSIDs/channels." },
+          { cmd: "capture -eapol", desc: "Capture WPA/WPA2 handshakes and PMKID for auditing your own network." },
+          { cmd: "capture -raw", desc: "Capture every WiFi frame seen on the tuned channel." },
+          { cmd: "capture -skimmer", desc: "Scan for Bluetooth card-skimmer style devices." },
+          { cmd: "capture -stop", desc: "Stop any active capture." }
+        ],
+        "System": [
+          { cmd: "stop", desc: "Stop all ongoing attacks and scans." },
+          { cmd: "coredump", desc: "Show a summary of any saved crash coredump." }
+        ]
+      },
+      bruce: {
+        "About Bruce's Serial CLI": [
+          { cmd: "help", desc: "Bruce's WiFi/BLE/RF/NFC attacks are mostly driven from its touchscreen menus, not serial commands. The commands below are the general device/utility commands exposed over serial (compatible with the Flipper Zero CLI)." }
+        ],
+        "System": [
+          { cmd: "info", desc: "Show device/system info." },
+          { cmd: "settings", desc: "Show current device settings." },
+          { cmd: "free", desc: "Show available RAM." },
+          { cmd: "uptime", desc: "Show system uptime." },
+          { cmd: "date", desc: "Show or set the current date/time." },
+          { cmd: "power", desc: "Show power/battery status or control power state." },
+          { cmd: "storage", desc: "Interact with the device's file storage." },
+          { cmd: "webui", desc: "Start the Bruce Web UI for browser-based control." },
+          { cmd: "loader", desc: "Load/launch an app or script." },
+          { cmd: "factory_reset", desc: "Reset the device to factory defaults." }
+        ],
+        "Hardware / Tools": [
+          { cmd: "ir", desc: "Read, dump, or replay an infrared signal." },
+          { cmd: "subghz", desc: "Read, dump, or replay a Sub-GHz RF signal." },
+          { cmd: "badusb", desc: "Run a BadUSB (Ducky Script) payload.", hint: "Offensive — only run against devices you own/are authorized to test." },
+          { cmd: "gpio", desc: "Read or write a GPIO pin." },
+          { cmd: "i2c", desc: "Scan or talk to devices on the I2C bus." },
+          { cmd: "led", desc: "Control the onboard LED." },
+          { cmd: "color", desc: "Set display/LED color." },
+          { cmd: "tone", desc: "Play a tone on the buzzer." },
+          { cmd: "say", desc: "Show text on-screen (TTS-style command)." },
+          { cmd: "clock", desc: "Show the clock screen." },
+          { cmd: "screen", desc: "Control the display." },
+          { cmd: "crypto", desc: "Crypto/hashing utility functions." },
+          { cmd: "js", desc: "Run a JavaScript app/script on-device." }
+        ]
+      },
+      generic: {
+        "General": [
+          { cmd: "help", desc: "Show available commands (if supported by this firmware)." },
+          { cmd: "info", desc: "Show generic system info." }
+        ]
+      }
+    };
+
+    let currentCategory = "";
+
+    function renderQuickCommands() {
+      const fw = document.getElementById('firmwareSelect').value;
+
+      let pinnedCommands = [];
+      try {
+        pinnedCommands = JSON.parse(localStorage.getItem('pinnedCommands')) || [];
+      } catch (e) { }
+
+      // Render Quick Pills (including Pinned)
+      const cmds = firmwareCommands[fw] || [];
+      const container = document.getElementById('quickPills');
+      container.innerHTML = '<span class="pill-label">QUICK:</span>';
+
+      // Add pinned commands first
+      pinnedCommands.forEach(cmd => {
+        const btn = document.createElement('button');
+        btn.className = 'pill cmdBtn';
+        btn.style.borderColor = 'var(--green)';
+        btn.dataset.cmd = cmd;
+        btn.innerHTML = `<span style="color:var(--green)">★</span> ${cmd}`;
+        btn.disabled = !port?.writable;
+        btn.addEventListener('click', () => {
+          if (cmd.endsWith(' ')) {
+            const cmdInput = document.getElementById('cmdInput');
+            cmdInput.value = cmd;
+            cmdInput.focus();
+          } else {
+            sendCommandText(cmd);
+          }
+        });
+        container.appendChild(btn);
+      });
+
+      cmds.forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = 'pill cmdBtn';
+        btn.dataset.cmd = item.cmd;
+        btn.textContent = item.name;
+        btn.disabled = !port?.writable;
+        btn.addEventListener('click', () => {
+          if (item.cmd.endsWith(' ')) {
+            const cmdInput = document.getElementById('cmdInput');
+            cmdInput.value = item.cmd;
+            cmdInput.focus();
+          } else {
+            sendCommandText(item.cmd);
+          }
+        });
+        container.appendChild(btn);
+      });
+
+      // Render Advanced Categories
+      const adv = advancedCommands[fw] || {};
+      const catContainer = document.getElementById('cmdCategories');
+      catContainer.innerHTML = '';
+
+      const categories = Object.keys(adv);
+      if (categories.length === 0) {
+        document.getElementById('cmdList').innerHTML = '<div style="color:var(--muted); text-align:center; margin-top:40px; font-family:var(--mono);">No advanced commands mapped for this firmware.</div>';
+        return;
+      }
+
+      if (!categories.includes(currentCategory)) {
+        currentCategory = categories[0];
+      }
+
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = 'cat-btn' + (cat === currentCategory ? ' active' : '');
+        btn.textContent = cat;
+        btn.addEventListener('click', () => {
+          currentCategory = cat;
+          renderQuickCommands(); // re-render to update active state
+        });
+        catContainer.appendChild(btn);
+      });
+
+      // Render Command List for selected category
+      const listContainer = document.getElementById('cmdList');
+      listContainer.innerHTML = '';
+
+      const catCmds = adv[currentCategory] || [];
+
+      // Apply Search Filter
+      const filterText = document.getElementById('cmdSearch')?.value.toLowerCase() || '';
+      let visibleCmds = catCmds;
+      if (filterText) {
+        visibleCmds = [];
+        Object.values(adv).forEach(cmds => {
+          cmds.forEach(item => {
+            if (item.cmd.toLowerCase().includes(filterText) || item.desc.toLowerCase().includes(filterText)) {
+              if (!visibleCmds.includes(item)) visibleCmds.push(item);
+            }
+          });
+        });
+      }
+
+      if (visibleCmds.length === 0) {
+        listContainer.innerHTML = '<div style="color:var(--muted); text-align:center; margin-top:40px; font-family:var(--mono);">No commands found.</div>';
+      }
+
+      visibleCmds.forEach((item, idx) => {
+        const isPinned = pinnedCommands.includes(item.cmd);
+        const div = document.createElement('div');
+        div.className = 'cmd-item';
+
+        let inputHtml = '';
+        if (item.input) {
+          inputHtml = `<input type="text" id="cmdInput_${idx}" class="fm-input" placeholder="${item.input}" style="width:120px; padding:6px 10px;" autocomplete="off" spellcheck="false" ${!port?.writable ? 'disabled' : ''}>`;
+        }
+
+        let hintHtml = '';
+        if (item.hint) {
+          hintHtml = `<div style="font-size:10px; color:#777; margin-top:4px;">💡 ${item.hint}</div>`;
+        }
+
+        div.innerHTML = `
+      <div class="cmd-info">
+        <div class="cmd-title">${item.cmd}</div>
+        <div class="cmd-desc">${item.desc}</div>
+        ${hintHtml}
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        ${inputHtml}
+        <button class="btn cmd-run-btn" id="runBtn_${idx}" ${!port?.writable ? 'disabled' : ''}>RUN</button>
+        <button class="cat-btn" id="pinBtn_${idx}" style="padding:6px 8px; border:none; ${isPinned ? 'color:var(--green);' : ''}" title="Pin to Quick Commands">★</button>
+      </div>
+    `;
+
+        listContainer.appendChild(div);
+
+        // Bind RUN button
+        document.getElementById(`runBtn_${idx}`).addEventListener('click', () => {
+          let finalCmd = item.cmd;
+          if (item.input) {
+            const val = document.getElementById(`cmdInput_${idx}`).value.trim();
+            if (val) finalCmd += ` ${val}`;
+          }
+          sendCommandText(finalCmd);
+          document.querySelector('[data-panel="console-panel"]').click();
+        });
+
+        // Bind PIN button
+        document.getElementById(`pinBtn_${idx}`).addEventListener('click', () => {
+          if (isPinned) {
+            pinnedCommands = pinnedCommands.filter(c => c !== item.cmd);
+          } else {
+            pinnedCommands.push(item.cmd);
+          }
+          localStorage.setItem('pinnedCommands', JSON.stringify(pinnedCommands));
+          renderQuickCommands();
+        });
+      });
+
+      const fmBc = document.getElementById('fmBreadcrumb');
+      if (fmBc) {
+        fmBc.innerHTML = `/ &gt; mnt &gt; ${fw}`;
+      }
+    }
+
+    const firmwareSelectEl = document.getElementById('firmwareSelect');
+    function setFirmwareSelection(fw) {
+      if (firmwareSelectEl.value === fw) return;
+      firmwareSelectEl.value = fw;
+      localStorage.setItem('selectedFirmware', fw);
+      renderQuickCommands();
+    }
+    const savedFirmware = localStorage.getItem('selectedFirmware');
+    if (savedFirmware && [...firmwareSelectEl.options].some(o => o.value === savedFirmware)) {
+      firmwareSelectEl.value = savedFirmware;
+    }
+    firmwareSelectEl.addEventListener('change', () => {
+      localStorage.setItem('selectedFirmware', firmwareSelectEl.value);
+      renderQuickCommands();
+    });
+    document.getElementById('cmdSearch').addEventListener('input', renderQuickCommands);
+    renderQuickCommands();
+
+    // Antenna type (Internal PCB vs External IPEX) - this is fixed board hardware, so the
+    // user picks it once and it's just remembered + shown as a label next to WiFi RSSI.
+    // It is intentionally NEVER inferred from RSSI/signal strength (see sendCommandText's
+    // scan-line parser above) - a weak/strong reading doesn't tell you which antenna a
+    // board has, only how far/obstructed the current target is.
+    const antTypeSelect = document.getElementById('antTypeSelect');
+    const antTypeTag = document.getElementById('ant-type-tag');
+    function applyAntennaTypeLabel(type) {
+      antTypeTag.textContent = type === 'ipex' ? '(IPEX)' : '(Internal)';
+    }
+    const savedAntType = localStorage.getItem('antennaType') || 'internal';
+    antTypeSelect.value = savedAntType;
+    applyAntennaTypeLabel(savedAntType);
+    antTypeSelect.addEventListener('change', () => {
+      localStorage.setItem('antennaType', antTypeSelect.value);
+      applyAntennaTypeLabel(antTypeSelect.value);
+    });
+  </script>
+
+  <!-- Serial Logic -->
+  <script>
+    let port, reader, keepReading = false;
+
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const stopScanBtn = document.getElementById('stopScanBtn');
+    const sysRefreshBtn = document.getElementById('sysRefreshBtn');
+    const infoRefreshBtn = document.getElementById('infoRefreshBtn');
+    const cmdInput = document.getElementById('cmdInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const terminal = document.getElementById('terminal');
+
+    // File Manager elements
+    const fmSelectBtn = document.getElementById('fmSelectBtn');
+    const fmSelectedFile = document.getElementById('fmSelectedFile');
+    const fmDestPath = document.getElementById('fmDestPath');
+    const fmInitCmd = document.getElementById('fmInitCmd');
+    const fmUploadBtn = document.getElementById('fmUploadBtn');
+
+    const jumpToBottomBtn = document.getElementById('jumpToBottomBtn');
+
+    // Auto-scroll lock: if the user has scrolled up to read earlier output, new incoming
+    // serial data shouldn't yank the view back down. Only auto-scroll while already at
+    // (or forced to) the bottom; otherwise surface a "jump to bottom" pill.
+    let userPinnedScroll = false;
+    function isNearTerminalBottom() {
+      return terminal.scrollHeight - terminal.scrollTop - terminal.clientHeight < 60;
+    }
+    terminal.addEventListener('scroll', () => {
+      userPinnedScroll = !isNearTerminalBottom();
+      jumpToBottomBtn.style.display = userPinnedScroll ? 'block' : 'none';
+    });
+    function autoScrollTerminal(force) {
+      if (force || !userPinnedScroll) {
+        terminal.scrollTop = terminal.scrollHeight;
+        userPinnedScroll = false;
+        jumpToBottomBtn.style.display = 'none';
+      }
+    }
+    jumpToBottomBtn.addEventListener('click', () => autoScrollTerminal(true));
+
+    // Cap terminal size so very long scan/sniff sessions don't grow the DOM forever and
+    // slow the page down. Trims the oldest nodes once the buffer gets too large.
+    const TERMINAL_MAX_CHARS = 400000;
+    function trimTerminalIfNeeded() {
+      if (terminal.textContent.length <= TERMINAL_MAX_CHARS) return;
+      while (terminal.textContent.length > TERMINAL_MAX_CHARS * 0.75 && terminal.firstChild) {
+        terminal.removeChild(terminal.firstChild);
+      }
+    }
+
+    function log(t) { terminal.appendChild(document.createTextNode(t)); trimTerminalIfNeeded(); autoScrollTerminal(); }
+    function logHTML(h) { terminal.insertAdjacentHTML('beforeend', h); trimTerminalIfNeeded(); autoScrollTerminal(); }
+
+    function setConnected(yes) {
+      if (yes) {
+        connectBtn.textContent = 'DISCONNECT';
+        connectBtn.style.color = 'var(--red)';
+        connectBtn.style.borderColor = 'var(--red)';
+      } else {
+        connectBtn.textContent = 'CONNECT SERIAL PORT';
+        connectBtn.style.color = '';
+        connectBtn.style.borderColor = '';
+      }
+      stopScanBtn.disabled = !yes;
+      sysRefreshBtn.disabled = !yes;
+      infoRefreshBtn.disabled = !yes;
+      cmdInput.disabled = !yes;
+      sendBtn.disabled = !yes;
+      document.getElementById('spoofApBtn').disabled = !yes;
+      document.getElementById('spoofStaBtn').disabled = !yes;
+      document.querySelectorAll('.cmdBtn').forEach(b => b.disabled = !yes);
+      document.querySelectorAll('.cmd-run-btn').forEach(b => b.disabled = !yes);
+      document.querySelectorAll('.cmd-item input').forEach(inp => inp.disabled = !yes);
+    }
+
+    async function connectSerial() {
+      if (!('serial' in navigator)) { alert('Web Serial API not supported. Use Chrome or Edge.'); return; }
+      try {
+        port = await navigator.serial.requestPort();
+        const br = parseInt(document.getElementById('baudRate').value) || 115200;
+        await port.open({ baudRate: br });
+        document.getElementById('conn-dot').className = 'dot on';
+        document.getElementById('conn-text').textContent = 'CONNECTED';
+        document.getElementById('conn-text').style.color = 'var(--green)';
+        setConnected(true);
+        renderQuickCommands();
+        keepReading = true;
+        readLoop();
+      } catch (e) { log('\n[Error] ' + e.message + '\n'); }
+    }
+
+    async function readLoop() {
+      const dec = new TextDecoderStream();
+      port.readable.pipeTo(dec.writable);
+      reader = dec.readable.getReader();
+      let buf = '';
+      try {
+        while (keepReading) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (!value) continue;
+
+          buf += value;
+          const lines = buf.split('\n');
+          buf = lines.pop();
+
+          for (let ln of lines) {
+            const l = ln.toLowerCase();
+
+            // Auto-detect firmware
+            if (l.includes('marauder') || l.includes('sniffbeacon') || l.includes('wardrive') || l.includes('sniffpmkid')) {
+              setFirmwareSelection('marauder');
+            } else if (l.includes('ghostesp') || l.includes('beaconspam') || l.includes('karma start')) {
+              setFirmwareSelection('ghostesp');
+            } else if (l.includes('bruce')) {
+              setFirmwareSelection('bruce');
+            }
+
+            // SD card detection
+            if (
+              l.includes('sd mounted') || l.includes('sd card found') ||
+              l.includes('evil portal') || l.includes('sd card mounted') ||
+              l.includes('sd card: mounted') || l.includes('sd card size') || l.match(/sd card:\s*\d+/i)
+            ) {
+              document.getElementById('sd-dot').className = 'dot on';
+            }
+            else if (
+              l.includes('sd failed') || l.includes('no sd card') ||
+              l.includes('sd card failed') || l.includes('sd card: none') ||
+              l.includes('sd card: not mounted') || l.includes('sd card not found')
+            ) {
+              document.getElementById('sd-dot').className = 'dot err';
+            }
+
+            // Antenna hardware
+            if (l.includes('cc1101 found') || l.includes('nrf24 found') || l.includes('gps found')) { document.getElementById('ant-dot').className = 'dot on'; }
+            else if (l.includes('cc1101 not found') || l.includes('nrf24 not found') || l.includes('gps not found') || l.includes('could not detect gps')) { document.getElementById('ant-dot').className = 'dot err'; }
+
+            // Parse tabular scan output
+            const isScanLine = l.match(/\[RSSI:/i) || l.match(/\[\s*\d+\]\s*(AP|STA)/i) || l.match(/^\s*-\d+\s+ch:\s*\d+/i);
+
+            if (isScanLine) {
+              if (!currentScanTable) {
+                currentScanTable = document.createElement('table');
+                currentScanTable.className = 'scan-table';
+                currentScanTable.innerHTML = '<tr><th>RSSI</th><th>CH</th><th>TYPE</th><th>MAC</th><th>INFO</th></tr>';
+                terminal.appendChild(currentScanTable);
+                logHTML('<br>'); // spacer
+              }
+              const row = currentScanTable.insertRow();
+
+              if (l.match(/\[RSSI:/i) || l.match(/^\s*-\d+\s+ch:\s*\d+/i)) {
+                let rssiVal = 0, ch = '', mac = '', essid = '';
+                if (l.match(/\[RSSI:/i)) {
+                  const rssiMatch = ln.match(/RSSI:\s*(-\d+)/i);
+                  const chMatch = ln.match(/CH:\s*(\d+)/i);
+                  const macMatch = ln.match(/MAC:\s*([0-9a-fA-F:]+)/i);
+                  const essidMatch = ln.match(/ESSID:\s*(.*?)\]/i);
+                  if (rssiMatch) rssiVal = parseInt(rssiMatch[1]);
+                  if (chMatch) ch = chMatch[1];
+                  if (macMatch) mac = macMatch[1];
+                  if (essidMatch) essid = essidMatch[1].trim();
+                } else {
+                  const rssiMatch = ln.match(/(-\d+)\s+Ch:/i);
+                  const chMatch = ln.match(/Ch:\s*(\d+)/i);
+                  const macMatch = ln.match(/([0-9a-fA-F]{2}[:-]){5}([0-9a-fA-F]{2})/i);
+                  const essidMatch = ln.match(/ESSID:\s*(.*)/i);
+                  if (rssiMatch) rssiVal = parseInt(rssiMatch[1]);
+                  if (chMatch) ch = chMatch[1];
+                  if (macMatch) mac = macMatch[0];
+                  if (essidMatch) essid = essidMatch[1].trim();
+                }
+
+                let rssiCol = 'var(--text)';
+                let range = 'WEAK';
+                if (rssiVal >= -60) { rssiCol = 'var(--green)'; range = 'STRONG'; }
+                else if (rssiVal >= -75) { rssiCol = '#d7ba7d'; range = 'MEDIUM'; }
+                else { rssiCol = 'var(--red)'; }
+
+                // Update Dashboard Signal Monitor.
+                // NOTE: signal strength depends on distance/obstacles/target power, not on
+                // whether this board has an internal PCB or external IPEX antenna - so it is
+                // never used to guess antenna type. Antenna type is set once via the
+                // ANT. TYPE dropdown (see antTypeSelect) and just shown as a label here.
+                if (rssiVal < 0) {
+                  document.getElementById('wifi-val').textContent = rssiVal + ' dBm (' + range + ')';
+                  document.getElementById('wifi-val').style.color = rssiCol;
+                }
+
+                row.innerHTML = `
+              <td style="color:${rssiCol}">${rssiVal ? rssiVal + ' dBm (' + range + ')' : ''}</td>
+              <td style="color:var(--bright)">${ch}</td>
+              <td style="color:#569cd6">AP</td>
+              <td style="color:#c586c0">${mac}</td>
+              <td style="color:var(--bright)">${essid}</td>
+            `;
+              } else {
+                const typeMatch = ln.match(/\]\s*(AP|STA)\s*:/i);
+                let mac1 = '', mac2 = '', type = '';
+                const macs = ln.match(/([0-9a-fA-F]{2}[:-]){5}([0-9a-fA-F]{2})/g);
+                if (macs && macs.length >= 2) {
+                  mac1 = macs[0]; mac2 = macs[1];
+                }
+                if (typeMatch) type = typeMatch[1];
+
+                row.innerHTML = `
+              <td>--</td>
+              <td>--</td>
+              <td style="color:#9cdcfe">CLIENT (${type})</td>
+              <td style="color:#c586c0">${mac1}</td>
+              <td style="color:var(--muted)">--> ${mac2}</td>
+            `;
+              }
+              trimTerminalIfNeeded();
+              autoScrollTerminal();
+              continue;
+            } else {
+              currentScanTable = null;
+            }
+
+            // TFT Virtual Display Parsing
+            if (l.startsWith('[tft]')) {
+              const payload = ln.substring(5).trim();
+              const upperPayload = payload.toUpperCase();
+
+              if (upperPayload.startsWith('TITLE:')) {
+                document.getElementById('tft-title').textContent = payload.substring(6).trim();
+                document.getElementById('tft-list').innerHTML = ''; // clear items on new title
+              }
+              else if (upperPayload.startsWith('CLEAR')) {
+                document.getElementById('tft-list').innerHTML = '';
+              }
+              else if (upperPayload.startsWith('ITEM:')) {
+                let itemText = payload.substring(5).trim();
+                const div = document.createElement('div');
+                div.style.padding = '8px 12px';
+                div.style.borderRadius = '4px';
+                div.style.transition = '0.1s';
+                div.style.border = '1px solid transparent';
+
+                // Basic color parsing e.g. [green]Text
+                let color = 'var(--muted)';
+                const colorMatch = itemText.match(/^\[(.*?)\]/);
+                if (colorMatch) {
+                  const c = colorMatch[1].toLowerCase();
+                  if (c === 'green') color = 'var(--green)';
+                  else if (c === 'red') color = 'var(--red)';
+                  else if (c === 'cyan' || c === 'blue') color = '#569cd6';
+                  else if (c === 'purple' || c === 'magenta') color = '#c586c0';
+                  else if (c === 'yellow') color = '#dcdcaa';
+                  itemText = itemText.substring(colorMatch[0].length).trim();
+                }
+
+                if (itemText.startsWith('>')) {
+                  div.style.background = '#eee';
+                  div.style.color = '#000';
+                  div.style.borderColor = '#eee';
+                  div.style.transform = 'translate(-0.25rem, -0.25rem)';
+                  div.style.boxShadow = '0.25rem 0.25rem rgba(255, 255, 255, 0.5)';
+                  div.textContent = itemText.replace('>', '').trim();
+                } else {
+                  div.style.color = color;
+                  div.textContent = itemText;
+                }
+                document.getElementById('tft-list').appendChild(div);
+              }
+              continue; // Don't print TFT commands to the main console to keep it clean
+            }
+
+            // Device Info Parsing
+            if (l.startsWith('firmware:')) {
+              document.getElementById('info-fw').textContent = ln.substring(9).trim();
+            } else if (l.startsWith('version:')) {
+              document.getElementById('info-ver').textContent = ln.substring(8).trim();
+            } else if (l.startsWith('hardware:') || l.startsWith('chip:') || l.startsWith('model:')) {
+              document.getElementById('info-hw').textContent = ln.substring(ln.indexOf(':') + 1).trim();
+            } else if (l.startsWith('esp-idf:')) {
+              document.getElementById('info-espidf').textContent = ln.substring(8).trim();
+            } else if (l.startsWith('wsl bypass:')) {
+              document.getElementById('info-wsl').textContent = ln.substring(11).trim();
+            } else if (l.startsWith('station mac:')) {
+              document.getElementById('info-stamac').textContent = ln.substring(12).trim();
+            } else if (l.startsWith('ap mac:')) {
+              document.getElementById('info-apmac').textContent = ln.substring(7).trim();
+            } else if (l.startsWith('mac:')) {
+              document.getElementById('info-stamac').textContent = ln.substring(4).trim();
+            } else if (l.startsWith('battery monitor:')) {
+              document.getElementById('info-batt').textContent = ln.substring(16).trim();
+            } else if (l.startsWith('free heap:') || l.startsWith('ram:') || l.startsWith('memory:')) {
+              document.getElementById('info-ram').textContent = ln.substring(ln.indexOf(':') + 1).trim();
+            } else if (l.startsWith('ssid:') || l.startsWith('wifi:') || l.startsWith('ap name:')) {
+              document.getElementById('info-wifi').textContent = ln.substring(ln.indexOf(':') + 1).trim();
+            } else if (l.startsWith('pins:') || l.startsWith('gpio:')) {
+              document.getElementById('info-pins').textContent = ln.substring(ln.indexOf(':') + 1).trim();
+            } else if (l.startsWith('bluetooth:') || l.startsWith('bt:')) {
+              document.getElementById('info-bt').textContent = ln.substring(ln.indexOf(':') + 1).trim();
+            } else if (l.startsWith('sd card size:') || l.startsWith('sd card type:') || l.startsWith('sd card model:') || l.startsWith('sd size:')) {
+              const v = ln.substring(ln.indexOf(':') + 1).trim();
+              const el = document.getElementById('info-sd');
+              if (el.textContent === '--') el.textContent = v;
+              else if (!el.textContent.includes(v)) el.textContent += ' | ' + v;
+            }
+
+            // Output formatted text to terminal
+            let htmlBase = ln
+              .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+              .replace(/\[RSSI:(\s*-\d+)\s*(.*?)]/gi, (m, r, desc) => {
+                const val = parseInt(r);
+                let col = 'var(--text)';
+                if (val >= -60) col = 'var(--green)';
+                else if (val >= -75) col = '#d7ba7d';
+                else col = 'var(--red)';
+                return `[<span style="color:${col}">RSSI:${r} ${desc}</span>]`;
+              })
+              .replace(/(CH|MAC|ESSID):([^\]]+)/gi, (m, k, v) => `<span style="color:#569cd6">${k}</span>:<span style="color:var(--bright)">${v}</span>`)
+              .replace(/\[(\s*\d+\s*)\]/g, (m, n) => `[<span style="color:#dcdcaa">${n}</span>]`)
+              .replace(/([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})/g, m => `<span style="color:#c586c0">${m}</span>`)
+              .replace(/\b(AP|STA)\b/g, m => `<span style="color:#9cdcfe">${m}</span>`);
+
+            logHTML(htmlBase + '\n');
+          }
+
+          // Flush prompt without newline
+          if (buf.trim().endsWith('>') || buf.trim().endsWith('#')) {
+            log(buf);
+            buf = '';
+          }
+        }
+      } catch (e) { log('\n[Read Error] ' + e.message + '\n'); }
+      finally { try { reader.releaseLock(); } catch (_) { } }
+    }
+
+    // Command history (↑/↓ in the console input), persisted across sessions.
+    let cmdHistory = [];
+    try { cmdHistory = JSON.parse(localStorage.getItem('cmdHistory')) || []; } catch (_) { cmdHistory = []; }
+    let historyIndex = cmdHistory.length;
+    let historyDraft = '';
+
+    async function sendCommand() {
+      const t = cmdInput.value.trim();
+      if (!t || !port?.writable) return;
+      const w = port.writable.getWriter();
+      await w.write(new TextEncoder().encode(t + '\r\n'));
+      w.releaseLock();
+      log('> ' + t + '\n');
+      cmdInput.value = '';
+      hideAutocomplete();
+
+      if (cmdHistory[cmdHistory.length - 1] !== t) {
+        cmdHistory.push(t);
+        if (cmdHistory.length > 100) cmdHistory.shift();
+        try { localStorage.setItem('cmdHistory', JSON.stringify(cmdHistory)); } catch (_) { }
+      }
+      historyIndex = cmdHistory.length;
+      historyDraft = '';
+    }
+
+    async function sendCtrl(byte, label) {
+      if (!port?.writable) return;
+      const w = port.writable.getWriter();
+      await w.write(new Uint8Array([byte]));
+      w.releaseLock();
+      log('^' + label + '\n');
+    }
+
+    async function disconnectSerial() {
+      keepReading = false;
+      try {
+        if (reader) { await reader.cancel(); try { reader.releaseLock(); } catch (_) { } }
+        await new Promise(r => setTimeout(r, 50));
+        if (port) await port.close();
+      } catch (e) { log('\n[Disconnect Error] ' + e.message + '\n'); }
+      port = null; reader = null;
+      document.getElementById('conn-dot').className = 'dot';
+      document.getElementById('conn-text').textContent = 'DISCONNECTED';
+      document.getElementById('conn-text').style.color = 'var(--muted)';
+      document.getElementById('sd-dot').className = 'dot';
+      document.getElementById('ant-dot').className = 'dot';
+      const wv = document.getElementById('wifi-val');
+      wv.textContent = '-- dBm'; wv.style.color = '';
+      setConnected(false);
+      renderQuickCommands();
+    }
+
+    // Events
+    connectBtn.addEventListener('click', () => {
+      if (port && port.readable) disconnectSerial();
+      else connectSerial();
+    });
+    sendBtn.addEventListener('click', sendCommand);
+
+    stopScanBtn.addEventListener('click', async () => {
+      if (!port?.writable) return;
+      const w = port.writable.getWriter();
+      await w.write(new TextEncoder().encode('stopscan\r\n'));
+      w.releaseLock();
+      log('> stopscan\n');
+    });
+
+    // Sidebar tabs
+    document.querySelectorAll('.nav-item[data-panel]').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        item.classList.add('active');
+        document.getElementById(item.dataset.panel).classList.add('active');
+      });
+    });
+
+    // Command autocomplete: suggests from the stock command set of whichever firmware is
+    // currently selected, using both the quick-pill list and the full Command Explorer list.
+    const cmdAutocomplete = document.getElementById('cmdAutocomplete');
+    let acItems = [];
+    let acIndex = -1;
+
+    function getFirmwareCommandPool(fw) {
+      const pool = new Map(); // cmd -> desc
+      (firmwareCommands[fw] || []).forEach(item => {
+        if (!pool.has(item.cmd)) pool.set(item.cmd, '');
+      });
+      Object.values(advancedCommands[fw] || {}).forEach(list => {
+        list.forEach(item => pool.set(item.cmd, item.desc || ''));
+      });
+      return pool;
+    }
+
+    function getCommandSuggestions(query) {
+      const fw = document.getElementById('firmwareSelect').value;
+      const pool = getFirmwareCommandPool(fw);
+      const q = query.toLowerCase();
+      const starts = [], includes = [];
+      pool.forEach((desc, cmd) => {
+        const lc = cmd.toLowerCase();
+        if (lc.startsWith(q)) starts.push({ cmd, desc });
+        else if (lc.includes(q)) includes.push({ cmd, desc });
+      });
+      return starts.concat(includes).slice(0, 8);
+    }
+
+    function renderAutocomplete() {
+      if (acItems.length === 0) { hideAutocomplete(); return; }
+      cmdAutocomplete.innerHTML = acItems.map((item, i) => `
+        <div class="autocomplete-item${i === acIndex ? ' active' : ''}" data-idx="${i}">
+          <span class="ac-cmd">${item.cmd}</span>
+          <span class="ac-desc">${item.desc || ''}</span>
+        </div>
+      `).join('');
+      cmdAutocomplete.style.display = 'block';
+      cmdAutocomplete.querySelectorAll('.autocomplete-item').forEach(el => {
+        el.addEventListener('mousedown', (e) => {
+          e.preventDefault(); // keep focus on cmdInput instead of the dropdown
+          selectAutocomplete(parseInt(el.dataset.idx));
+        });
+      });
+    }
+
+    function hideAutocomplete() {
+      acItems = []; acIndex = -1;
+      cmdAutocomplete.style.display = 'none';
+      cmdAutocomplete.innerHTML = '';
+    }
+
+    function selectAutocomplete(i) {
+      const item = acItems[i];
+      if (!item) return;
+      cmdInput.value = item.cmd + ' ';
+      hideAutocomplete();
+      cmdInput.focus();
+    }
+
+    cmdInput.addEventListener('input', () => {
+      const q = cmdInput.value.trim();
+      if (!q) { hideAutocomplete(); return; }
+      acItems = getCommandSuggestions(q);
+      acIndex = -1;
+      renderAutocomplete();
+    });
+
+    cmdInput.addEventListener('blur', () => {
+      // Small delay so a click on a suggestion registers before the list disappears.
+      setTimeout(hideAutocomplete, 150);
+    });
+
+    // Keyboard
+    cmdInput.addEventListener('keydown', e => {
+      const acOpen = cmdAutocomplete.style.display === 'block' && acItems.length > 0;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (acOpen) { acIndex = (acIndex + 1) % acItems.length; renderAutocomplete(); }
+        else if (historyIndex < cmdHistory.length) {
+          historyIndex++;
+          cmdInput.value = historyIndex === cmdHistory.length ? historyDraft : cmdHistory[historyIndex];
+        }
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (acOpen) { acIndex = (acIndex - 1 + acItems.length) % acItems.length; renderAutocomplete(); }
+        else if (historyIndex > 0) {
+          if (historyIndex === cmdHistory.length) historyDraft = cmdInput.value;
+          historyIndex--;
+          cmdInput.value = cmdHistory[historyIndex];
+        }
+        return;
+      }
+      if ((e.key === 'Tab' || e.key === 'Enter') && acOpen && acIndex >= 0) {
+        e.preventDefault();
+        selectAutocomplete(acIndex);
+        return;
+      }
+      if (e.key === 'Escape' && acOpen) { e.preventDefault(); hideAutocomplete(); return; }
+
+      if (e.key === 'Enter') { sendCommand(); }
+      else if (e.ctrlKey && e.key.toLowerCase() === 'c') {
+        if (cmdInput.selectionStart !== cmdInput.selectionEnd) return; // Allow copy
+        e.preventDefault(); sendCtrl(0x03, 'C');
+      }
+      else if (e.ctrlKey && e.key.toLowerCase() === 'x') { e.preventDefault(); sendCtrl(0x18, 'X'); }
+      else if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); sendCtrl(0x1A, 'Z'); }
+      else if (e.ctrlKey && e.key.toLowerCase() === 'd') { e.preventDefault(); sendCtrl(0x04, 'D'); }
+    });
+    window.addEventListener('keydown', e => {
+      const mirrorActive = document.getElementById('mirror-panel').classList.contains('active');
+
+      if (document.activeElement !== cmdInput && port?.writable && mirrorActive) {
+        const k = e.key.toLowerCase();
+        if (k === 'w' || e.key === 'ArrowUp') { e.preventDefault(); sendCommandText('TFT_UP'); return; }
+        else if (k === 's' || e.key === 'ArrowDown') { e.preventDefault(); sendCommandText('TFT_DOWN'); return; }
+        else if (k === 'a' || e.key === 'ArrowLeft') { e.preventDefault(); sendCommandText('TFT_LEFT'); return; }
+        else if (k === 'd' || e.key === 'ArrowRight') { e.preventDefault(); sendCommandText('TFT_RIGHT'); return; }
+        else if (e.key === 'Enter') { e.preventDefault(); sendCommandText('TFT_SELECT'); return; }
+      }
+
+      if (!e.ctrlKey || document.activeElement === cmdInput) return;
+      const k = e.key.toLowerCase();
+      if (k === 'c') {
+        if (window.getSelection().toString().length > 0) return; // Allow copy
+        e.preventDefault(); sendCtrl(0x03, 'C');
+      }
+      else if (k === 'x') { e.preventDefault(); sendCtrl(0x18, 'X'); }
+      else if (k === 'z') { e.preventDefault(); sendCtrl(0x1A, 'Z'); }
+      else if (k === 'd') { e.preventDefault(); sendCtrl(0x04, 'D'); }
+    });
+
+    // TFT D-Pad Clicks
+    document.querySelectorAll('.tft-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.key;
+        if (key === 'up') sendCommandText('TFT_UP');
+        else if (key === 'down') sendCommandText('TFT_DOWN');
+        else if (key === 'left') sendCommandText('TFT_LEFT');
+        else if (key === 'right') sendCommandText('TFT_RIGHT');
+        else if (key === 'center') sendCommandText('TFT_SELECT');
+      });
+    });
+
+    // Copy / Clear / Export / Upload
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      await navigator.clipboard.writeText(terminal.textContent).catch(() => { });
+      const b = document.getElementById('copyBtn');
+      const orig = b.textContent;
+      b.textContent = 'COPIED!';
+      setTimeout(() => b.textContent = orig, 2000);
+    });
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      terminal.textContent = '';
+      userPinnedScroll = false;
+      jumpToBottomBtn.style.display = 'none';
+    });
+
+    // Quick status refresh (gets SD Card, WiFi, Firmware info)
+    document.getElementById('sysRefreshBtn').addEventListener('click', () => {
+      sendCommandText('info');
+    });
+
+    document.getElementById('infoRefreshBtn').addEventListener('click', () => {
+      sendCommandText('info');
+    });
+
+
+
+    document.getElementById('fullscreenBtn').addEventListener('click', () => {
+      document.querySelector('.dash-shell').classList.toggle('fullscreen');
+    });
+
+    let currentFontSize = 14;
+    document.getElementById('fontPlusBtn').addEventListener('click', () => {
+      if (currentFontSize < 32) currentFontSize += 2;
+      terminal.style.fontSize = currentFontSize + 'px';
+    });
+    document.getElementById('fontMinusBtn').addEventListener('click', () => {
+      if (currentFontSize > 8) currentFontSize -= 2;
+      terminal.style.fontSize = currentFontSize + 'px';
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(new Blob([terminal.textContent], { type: 'text/plain' })),
+        download: 'terminal_export.txt'
+      });
+      a.click();
+    });
+
+    // Old Console Upload Button
+    const fileInput = document.getElementById('fileInput');
+    document.getElementById('uploadBtn').addEventListener('click', () => fileInput.click());
+
+    // File Manager Logic
+    if (fmSelectBtn) fmSelectBtn.addEventListener('click', () => fileInput.click());
+
+    document.getElementById('fmMkdirBtn').addEventListener('click', () => {
+      const folderName = prompt("Enter folder name:");
+      if (folderName) {
+        sendCommandText('mkdir ' + folderName);
+      }
+    });
+
+    document.getElementById('fmRefreshBtn').addEventListener('click', () => {
+      sendCommandText('list -a');
+    });
+
+    fileInput.addEventListener('change', async e => {
+      const file = e.target.files[0]; if (!file) return;
+
+      const filesTabActive = document.getElementById('files-panel').classList.contains('active');
+      if (filesTabActive) {
+        const s = document.getElementById('fmSelectedFile');
+        if (s) s.textContent = file.name;
+        document.getElementById('fmDestPath').value = '/' + file.name;
+        document.getElementById('fmInitCmd').value = '';
+        document.getElementById('fmUploadBtn').disabled = !port?.writable;
+        document.getElementById('fmUploadUi').style.display = 'flex';
+        return;
+      }
+
+      await streamFileToSerial(file, '');
+    });
+
+    if (fmUploadBtn) {
+      fmUploadBtn.addEventListener('click', async () => {
+        const file = fileInput.files[0];
+        if (!file || !port?.writable) return;
+
+        document.querySelector('.nav-item[data-panel="console-panel"]').click();
+
+        const initCmd = document.getElementById('fmInitCmd').value.trim();
+        if (initCmd) {
+          await sendCommandText(initCmd);
+          await new Promise(r => setTimeout(r, 1000));
+        }
+
+        await streamFileToSerial(file, ' to SD Card');
+
+        document.getElementById('fmSelectedFile').textContent = 'No file';
+        fileInput.value = '';
+        fmUploadBtn.disabled = true;
+        document.getElementById('fmUploadUi').style.display = 'none';
+      });
+    }
+
+    async function sendCommandText(t) {
+      if (!t || !port?.writable) return;
+      const w = port.writable.getWriter();
+      await w.write(new TextEncoder().encode(t + '\r\n'));
+      w.releaseLock();
+      log('> ' + t + '\n');
+    }
+
+    async function streamFileToSerial(file, labelSuffix) {
+      const name = file.name.toLowerCase();
+      const isScript = name.endsWith('.txt') || name.endsWith('.marauder') || name.endsWith('.cmd');
+
+      if (!isScript) {
+        log(`\n[Upload Blocked] "${file.name}" was not sent.\n`);
+        log('The ESP32 Marauder firmware has no serial command to write raw\n');
+        log('binary/file data directly to the SD card. Sending a non-text\n');
+        log('file line-by-line as commands floods the device with invalid\n');
+        log('command errors (looks like garbage/DOS on screen).\n');
+        log('Only .txt / .marauder / .cmd command-script files are supported\n');
+        log('here — each line should be a valid Marauder CLI command.\n');
+        log('To move actual files (images, firmware, captures) to the SD card,\n');
+        log('remove the card and copy them on your PC, or use the Evil Portal /\n');
+        log('WiFi web interface if your firmware build supports it.\n');
+        fileInput.value = '';
+        return;
+      }
+
+      const text = await file.text();
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+      // Basic sanity check: warn if lines look like binary/garbage, not commands
+      const suspicious = lines.filter(l => /[^\x20-\x7E]/.test(l)).length;
+      if (suspicious > 0) {
+        log(`\n[Upload Blocked] "${file.name}" contains non-text/binary content\n`);
+        log('on ' + suspicious + ' line(s). Refusing to send it as commands to avoid\n');
+        log('flooding the serial console. Please confirm this is a plain-text\n');
+        log('command script and try again.\n');
+        fileInput.value = '';
+        return;
+      }
+
+      log(`\n--- Uploading ${file.name}${labelSuffix} (${lines.length} lines) ---\n`);
+      for (let ln of lines) {
+        if (!port?.writable) break;
+        await sendCommandText(ln);
+        await new Promise(r => setTimeout(r, 100));
+      }
+      log('--- Upload Complete ---\n');
+      fileInput.value = '';
+    }
+  </script>
+</body>
+
+</html>
