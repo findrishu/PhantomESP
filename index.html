@@ -25,6 +25,7 @@
       --red: #c00;
       --red-hot: #ff2828;
       --green: #00ff5a;
+      --amber: #ffa826;
       --mono: 'Share Tech Mono', monospace;
       --vt: 'VT323', monospace;
     }
@@ -235,6 +236,18 @@
       font-weight: bold;
     }
 
+    .led-box {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
     .dot {
       width: 8px;
       height: 8px;
@@ -251,6 +264,19 @@
 
     .dot.err {
       animation: blink-red 1s infinite;
+    }
+
+    /* antenna in-use indicator - plain text value like the other hw rows */
+    #antTypeValue {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--green);
+      transition: color 0.2s;
+    }
+
+    #antTypeValue:hover {
+      color: var(--bright);
+      text-decoration: underline;
     }
 
     #wifi-val {
@@ -402,6 +428,44 @@
       cursor: not-allowed;
     }
 
+    .pill-managed {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pill[draggable="true"] {
+      cursor: grab;
+    }
+
+    .pill[draggable="true"].dragging {
+      opacity: .4;
+    }
+
+    .pill-edit {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1;
+      padding: 0 2px;
+    }
+
+    .pill-edit:hover {
+      color: var(--bright);
+    }
+
+    .pill-remove {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1;
+      padding: 0 2px;
+      border-radius: 50%;
+    }
+
+    .pill-remove:hover {
+      color: var(--red-hot);
+      background: rgba(255, 40, 40, .15);
+    }
+
     .actions {
       display: flex;
       gap: 8px;
@@ -463,7 +527,7 @@
     }
 
     .autocomplete-item .ac-cmd {
-      color: var(--green);
+      color: var(--amber);
       font-size: 14px;
       white-space: nowrap;
     }
@@ -650,8 +714,8 @@
 
     .cat-btn.active {
       background: #111;
-      color: var(--green);
-      border-color: var(--green);
+      color: var(--red-hot);
+      border-color: var(--red-hot);
     }
 
     .cmd-item {
@@ -690,14 +754,15 @@
       flex-shrink: 0;
       padding: 6px 16px;
       font-size: 12px;
-      border-color: var(--green);
-      color: var(--green);
+      border-color: rgba(204, 0, 0, .5);
+      color: var(--red);
     }
 
     .cmd-run-btn:hover:not(:disabled) {
-      background: var(--green);
+      background: var(--red);
       color: #000;
-      box-shadow: 0.25rem 0.25rem var(--green);
+      border-color: var(--red);
+      box-shadow: 0.25rem 0.25rem rgba(255, 40, 40, 0.5);
     }
 
     #cmdInput:focus {
@@ -1142,25 +1207,22 @@
           </div>
           <div class="hw"><span class="lbl">SERIAL</span><span id="conn-text"
               style="color:var(--muted);">DISCONNECTED</span>
-            <div class="dot" id="conn-dot"></div>
+            <div class="led-box"><div class="dot" id="conn-dot"></div></div>
           </div>
           <div class="hw"><span class="lbl">SD CARD</span>
-            <div class="dot" id="sd-dot"></div>
+            <div class="led-box"><div class="dot" id="sd-dot"></div></div>
           </div>
           <div class="hw"><span class="lbl">RF ADD-ON <span id="ant-type"
                 style="font-size:9px; color:var(--muted); margin-left:4px;"></span></span>
-            <div class="dot" id="ant-dot"></div>
+            <div class="led-box"><div class="dot" id="ant-dot"></div></div>
           </div>
           <div class="hw" style="align-items:center;">
-            <span class="lbl" style="display:flex; align-items:center; gap:4px;">ANT. TYPE
+            <span class="lbl" style="display:flex; align-items:center; gap:4px;">ANTENNA IN USE
               <span
                 title="Whether this board has an internal PCB antenna or an IPEX/UFL connector for an external antenna. This is fixed hardware — it can't be detected from signal strength, so pick it once for your board."
                 style="cursor:help; color:var(--muted); font-size:10px;">ⓘ</span>
             </span>
-            <select id="antTypeSelect" class="dash-select" style="font-size:10px; padding:2px 6px; height:22px;">
-              <option value="internal">Internal (PCB)</option>
-              <option value="ipex">External (IPEX)</option>
-            </select>
+            <span id="antTypeValue" style="cursor:pointer;" title="Click to change">--</span>
           </div>
           <div class="hw"><span class="lbl">WIFI RSSI <span id="ant-type-tag"
                 style="font-size:9px; color:var(--muted); margin-left:4px;"></span></span><span id="wifi-val">--
@@ -1316,7 +1378,7 @@
                   style="background:transparent; border:1px solid var(--border); color:var(--text); padding:4px 8px; font-size:12px; border-radius:4px; outline:none;"
                   placeholder="/filename.bin">
                 <input type="text" id="fmInitCmd" style="display:none;" value="">
-                <button class="fm-btn" id="fmUploadBtn" style="border-color:var(--green); color:var(--green);">START
+                <button class="fm-btn" id="fmUploadBtn" style="border-color:var(--red); color:var(--red);">START
                   UPLOAD</button>
               </div>
             </div>
@@ -1402,6 +1464,12 @@
             <button class="btn" id="infoRefreshBtn"
               style="margin-top:16px; width:100%; justify-content:center; border-color:var(--green); color:var(--green);"
               disabled>FETCH SYSINFO</button>
+            <p style="margin-top:10px; font-size:11px; color:var(--muted); line-height:1.5;">
+              Note: if you pull the SD card while the device is running, most firmware
+              builds don't re-check the slot live — SYSINFO/refresh will keep showing the
+              old (mounted) status until you reboot the device, since SD detection normally
+              only runs once at boot. This is a firmware behavior, not a dashboard bug.
+            </p>
           </div>
 
           <h3
@@ -1428,6 +1496,11 @@
             <input type="text" id="macCustomInput" class="dash-select"
               placeholder="Or enter custom MAC (e.g. 1A:2B:3C:4D:5E:6F)" style="width: 100%; margin-bottom: 16px;">
 
+            <label style="display:flex; align-items:center; gap:8px; margin-bottom:16px; font-size:13px; color:var(--muted); cursor:pointer;">
+              <input type="checkbox" id="macRebootAfter" checked style="width:14px; height:14px; cursor:pointer;">
+              Reboot device after applying (recommended — some firmware only fully commits a new MAC on next boot; changing it mid-session can leave scans/attacks in a stale state)
+            </label>
+
             <div style="display:flex; gap: 12px;">
               <button class="btn" id="spoofApBtn"
                 style="flex:1; justify-content:center; border-color:var(--red); color:var(--red);" disabled>SPOOF AP
@@ -1436,6 +1509,7 @@
                 style="flex:1; justify-content:center; border-color:var(--bright); color:var(--bright);" disabled>SPOOF
                 STA MAC</button>
             </div>
+            <p style="color:var(--muted); font-size:11px; margin-top:12px;">Sends <code>mac -a/-s &lt;MAC&gt;</code> (GhostESP: <code>setmac</code>) over serial. If your firmware build expects different syntax, type the command directly in the console instead.</p>
           </div>
 
         </div>
@@ -1604,6 +1678,73 @@
     // Sections 43/66). "Defense / Detection" commands are passive/monitoring - they listen
     // for and flag attacks (deauth floods, rogue APs, skimmers, trackers) rather than send
     // anything, so they're safe to run anywhere to audit or monitor your own environment.
+    // "@macro:<id>" is a synthetic cmd string (never sent to the device literally).
+    // It marks a multi-step automation - clicking it sends each real step below in
+    // sequence with a short delay, instead of you typing/running them one at a time.
+    // Only listed for firmwares whose serial CLI actually drives WiFi attacks; Bruce's
+    // WiFi attacks are touchscreen-menu only (see its "About" entry) so it has none.
+    function isMacro(cmd) { return typeof cmd === 'string' && cmd.startsWith('@macro:'); }
+    const macroLabels = { '@macro:autoHandshake': 'AUTO HANDSHAKE CAPTURE' };
+    function macroLabel(cmd) { return macroLabels[cmd] || cmd; }
+    const macroSteps = {
+      '@macro:autoHandshake': {
+        marauder: ['capture -e', 'attack -t deauth'],
+        ghostesp: ['capture -eapol', 'attack -d']
+      }
+    };
+    async function runMacro(cmd) {
+      const fw = document.getElementById('firmwareSelect').value;
+      const steps = (macroSteps[cmd] || {})[fw];
+      if (!steps) {
+        alert('This automation isn\'t available for the ' + fw + ' firmware yet.');
+        return;
+      }
+
+      if (cmd === '@macro:autoHandshake') {
+        const ssid = prompt('Target AP SSID (used to create a matching folder on the SD card):');
+        const safeSsid = ssid ? ssid.trim() : '';
+        if (safeSsid) {
+          log(`\n--- Creating folder "/${safeSsid}" on SD card ---\n`);
+          await sendCommandText('mkdir ' + safeSsid);
+          await new Promise(r => setTimeout(r, 600));
+          log(`NOTE: this firmware's serial CLI has no "cd"/"mv"/"rename" command, so it\n`);
+          log(`can't be told to save the capture straight into that folder or move it\n`);
+          log(`there afterward - the handshake file will still land wherever "capture"\n`);
+          log(`always saves it by default. Use the "/${safeSsid}" folder as the place to\n`);
+          log(`file it into yourself once you pull the SD card and check it on a PC.\n`);
+        }
+      }
+
+      log(`\n--- Running automation: ${macroLabel(cmd)} ---\n`);
+      for (const step of steps) {
+        await sendCommandText(step);
+        await new Promise(r => setTimeout(r, 600));
+      }
+      if (cmd === '@macro:autoHandshake') {
+        handshakeCaptureArmed = true;
+        log('--- Watching serial output for a captured EAPOL handshake - deauth will auto-stop once one comes in ---\n');
+      }
+      log('--- Automation steps sent ---\n');
+    }
+
+    // Pinned Quick Commands are stored per-firmware, so customizing them for Marauder
+    // doesn't affect what you see when you switch to GhostESP/Bruce/generic, and vice versa.
+    function pinnedKey(fw) { return 'pinnedCommands_' + fw; }
+    function loadPinned(fw) {
+      const raw = localStorage.getItem(pinnedKey(fw));
+      if (raw === null) {
+        // First time this firmware's Quick Access is rendered (nothing saved yet):
+        // default to Auto Handshake Capture for firmwares where the macro is wired up.
+        // It's still a normal pinned pill from here — drag to reorder, or hit the ×
+        // to unpin it, exactly like any command you pin yourself.
+        return (macroSteps['@macro:autoHandshake'] || {})[fw] ? ['@macro:autoHandshake'] : [];
+      }
+      try { return JSON.parse(raw) || []; } catch (e) { return []; }
+    }
+    function savePinned(fw, arr) {
+      try { localStorage.setItem(pinnedKey(fw), JSON.stringify(arr)); } catch (e) { }
+    }
+
     const advancedCommands = {
       marauder: {
         "Scanning & Recon": [
@@ -1641,8 +1782,16 @@
           { cmd: "sniffpwn", desc: "Detect Pwnagotchi devices operating in the area." },
           { cmd: "sniffsae", desc: "Monitor WPA3 SAE handshake traffic (useful for auditing your own AP's WPA3 setup)." },
           { cmd: "sniffpmkid", desc: "Capture PMKID from a handshake for offline auditing of your own network's password strength.", hint: "Only run against APs you own/are authorized to audit." },
+          { cmd: "capture -e", desc: "Handshake capture — saves WPA/WPA2 EAPOL handshakes and PMKID hashes to SD as they're seen, for auditing your own network's password strength.", hint: "Pair with attack -t deauth on the selected AP to force a reconnect and capture the handshake faster, or use the Automation category to do both in one click. Only run against APs you own/are authorized to audit." },
           { cmd: "sigmon", desc: "Signal Monitor — graphs RSSI of a selected AP over time, useful for spotting jamming/interference." },
           { cmd: "packetcount", desc: "Display a live count of captured packets per type." }
+        ],
+        "Automation": [
+          { cmd: "@macro:autoHandshake", desc: "Starts handshake capture then immediately fires a deauth at the selected AP, so a client reconnects and the EAPOL handshake gets captured — instead of running capture -e and attack -t deauth separately.", hint: "Run scanap -> select -a first so an AP is selected. Only run against APs you own/are authorized to audit." }
+        ],
+        "Identity / MAC": [
+          { cmd: "mac -a", desc: "Set the AP-interface MAC address.", input: "MAC (e.g. 1A:2B:3C:4D:5E:6F)", hint: "Same command the Identity Spoofer panel's SPOOF AP MAC button sends." },
+          { cmd: "mac -s", desc: "Set the Station-interface MAC address.", input: "MAC (e.g. 1A:2B:3C:4D:5E:6F)", hint: "Same command the Identity Spoofer panel's SPOOF STA MAC button sends." }
         ],
         "Bluetooth Attacks (Offensive)": [
           { cmd: "btspamall", desc: "Spam every supported BLE popup payload at once (Apple/Samsung/Windows/Google)." },
@@ -1723,10 +1872,17 @@
           { cmd: "listenprobes", desc: "Passively monitor probe requests from nearby devices.", input: "channel or stop" },
           { cmd: "capture -deauth", desc: "Capture deauth frames to SD — diagnose disconnect storms or targeted kicks." },
           { cmd: "capture -beacon", desc: "Capture beacon frames to review advertised SSIDs/channels." },
-          { cmd: "capture -eapol", desc: "Capture WPA/WPA2 handshakes and PMKID for auditing your own network." },
+          { cmd: "capture -eapol", desc: "Capture WPA/WPA2 handshakes and PMKID for auditing your own network.", hint: "Pair with attack -d on the selected AP to force a reconnect and capture the handshake faster, or use the Automation category to do both in one click." },
           { cmd: "capture -raw", desc: "Capture every WiFi frame seen on the tuned channel." },
           { cmd: "capture -skimmer", desc: "Scan for Bluetooth card-skimmer style devices." },
           { cmd: "capture -stop", desc: "Stop any active capture." }
+        ],
+        "Automation": [
+          { cmd: "@macro:autoHandshake", desc: "Starts handshake capture then immediately fires a deauth at the selected AP, so a client reconnects and the EAPOL handshake gets captured — instead of running capture -eapol and attack -d separately.", hint: "Run scanap -> select -a first so an AP is selected. Only run against APs you own/are authorized to audit." }
+        ],
+        "Identity / MAC": [
+          { cmd: "setmac -a", desc: "Set the AP-interface MAC address.", input: "MAC (e.g. 1A:2B:3C:4D:5E:6F)", hint: "Same command the Identity Spoofer panel's SPOOF AP MAC button sends." },
+          { cmd: "setmac -s", desc: "Set the Station-interface MAC address.", input: "MAC (e.g. 1A:2B:3C:4D:5E:6F)", hint: "Same command the Identity Spoofer panel's SPOOF STA MAC button sends." }
         ],
         "System": [
           { cmd: "stop", desc: "Stop all ongoing attacks and scans." },
@@ -1763,6 +1919,9 @@
           { cmd: "screen", desc: "Control the display." },
           { cmd: "crypto", desc: "Crypto/hashing utility functions." },
           { cmd: "js", desc: "Run a JavaScript app/script on-device." }
+        ],
+        "Identity / MAC": [
+          { cmd: "help", desc: "Bruce doesn't expose a documented serial command to change the AP/Station MAC address — that's not available from this firmware's CLI, unlike Marauder/GhostESP." }
         ]
       },
       generic: {
@@ -1778,35 +1937,12 @@
     function renderQuickCommands() {
       const fw = document.getElementById('firmwareSelect').value;
 
-      let pinnedCommands = [];
-      try {
-        pinnedCommands = JSON.parse(localStorage.getItem('pinnedCommands')) || [];
-      } catch (e) { }
+      let pinnedCommands = loadPinned(fw);
 
       // Render Quick Pills (including Pinned)
       const cmds = firmwareCommands[fw] || [];
       const container = document.getElementById('quickPills');
       container.innerHTML = '<span class="pill-label">QUICK:</span>';
-
-      // Add pinned commands first
-      pinnedCommands.forEach(cmd => {
-        const btn = document.createElement('button');
-        btn.className = 'pill cmdBtn';
-        btn.style.borderColor = 'var(--green)';
-        btn.dataset.cmd = cmd;
-        btn.innerHTML = `<span style="color:var(--green)">★</span> ${cmd}`;
-        btn.disabled = !port?.writable;
-        btn.addEventListener('click', () => {
-          if (cmd.endsWith(' ')) {
-            const cmdInput = document.getElementById('cmdInput');
-            cmdInput.value = cmd;
-            cmdInput.focus();
-          } else {
-            sendCommandText(cmd);
-          }
-        });
-        container.appendChild(btn);
-      });
 
       cmds.forEach(item => {
         const btn = document.createElement('button');
@@ -1825,6 +1961,87 @@
         });
         container.appendChild(btn);
       });
+
+      // Pinned commands (including Auto Handshake Capture by default). Each has an
+      // edit (✎) control to swap its command for a different one in place, and a
+      // remove (×) control to unpin it. Only plain custom commands are draggable to
+      // reorder - the built-in Auto Handshake Capture stays fixed (no drag/hand cursor).
+      let dragSrcIdx = null;
+      pinnedCommands.forEach((cmd, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'pill cmdBtn pill-managed';
+        const draggableAllowed = !isMacro(cmd);
+        btn.draggable = draggableAllowed;
+        btn.dataset.cmd = cmd;
+        btn.dataset.pinnedIdx = i;
+        btn.innerHTML = `<span class="pill-text">${macroLabel(cmd)}</span><span class="pill-edit" title="Replace this command">✎</span><span class="pill-remove" title="Remove from Quick Commands">×</span>`;
+        btn.disabled = !port?.writable;
+
+        btn.addEventListener('click', (e) => {
+          if (e.target.classList.contains('pill-remove')) {
+            pinnedCommands = pinnedCommands.filter((c, idx) => idx !== i);
+            savePinned(fw, pinnedCommands);
+            renderQuickCommands();
+            return;
+          }
+          if (e.target.classList.contains('pill-edit')) {
+            const replacement = prompt('Replace with command:', isMacro(cmd) ? '' : cmd);
+            const trimmed = replacement ? replacement.trim() : '';
+            if (!trimmed) return;
+            pinnedCommands[i] = trimmed;
+            savePinned(fw, pinnedCommands);
+            renderQuickCommands();
+            return;
+          }
+          if (isMacro(cmd)) {
+            runMacro(cmd);
+            return;
+          }
+          if (cmd.endsWith(' ')) {
+            const cmdInput = document.getElementById('cmdInput');
+            cmdInput.value = cmd;
+            cmdInput.focus();
+          } else {
+            sendCommandText(cmd);
+          }
+        });
+
+        // Drag-to-reorder (custom commands only - not the fixed Auto Handshake pill)
+        if (draggableAllowed) {
+          btn.addEventListener('dragstart', () => { dragSrcIdx = i; btn.classList.add('dragging'); });
+          btn.addEventListener('dragend', () => { btn.classList.remove('dragging'); });
+        }
+        btn.addEventListener('dragover', (e) => { e.preventDefault(); });
+        btn.addEventListener('drop', (e) => {
+          e.preventDefault();
+          if (dragSrcIdx === null || dragSrcIdx === i) return;
+          const moved = pinnedCommands.splice(dragSrcIdx, 1)[0];
+          pinnedCommands.splice(i, 0, moved);
+          savePinned(fw, pinnedCommands);
+          dragSrcIdx = null;
+          renderQuickCommands();
+        });
+
+        container.appendChild(btn);
+      });
+
+      // Let the user pin ANY command text they want, not just ones already listed
+      // in the Command Explorer below. Placed last/rightmost.
+      const addBtn = document.createElement('button');
+      addBtn.className = 'pill';
+      addBtn.id = 'addCustomCmdBtn';
+      addBtn.title = 'Add your own command to Quick Access';
+      addBtn.textContent = '+ Add';
+      addBtn.addEventListener('click', () => {
+        const custom = prompt('Command to add to Quick Access (exact text to send):');
+        const trimmed = custom ? custom.trim() : '';
+        if (!trimmed) return;
+        const current = loadPinned(fw);
+        if (!current.includes(trimmed)) current.push(trimmed);
+        savePinned(fw, current);
+        renderQuickCommands();
+      });
+      container.appendChild(addBtn);
 
       // Render Advanced Categories
       const adv = advancedCommands[fw] || {};
@@ -1893,7 +2110,7 @@
 
         div.innerHTML = `
       <div class="cmd-info">
-        <div class="cmd-title">${item.cmd}</div>
+        <div class="cmd-title">${macroLabel(item.cmd)}</div>
         <div class="cmd-desc">${item.desc}</div>
         ${hintHtml}
       </div>
@@ -1908,6 +2125,11 @@
 
         // Bind RUN button
         document.getElementById(`runBtn_${idx}`).addEventListener('click', () => {
+          if (isMacro(item.cmd)) {
+            runMacro(item.cmd);
+            document.querySelector('[data-panel="console-panel"]').click();
+            return;
+          }
           let finalCmd = item.cmd;
           if (item.input) {
             const val = document.getElementById(`cmdInput_${idx}`).value.trim();
@@ -1924,7 +2146,7 @@
           } else {
             pinnedCommands.push(item.cmd);
           }
-          localStorage.setItem('pinnedCommands', JSON.stringify(pinnedCommands));
+          savePinned(fw, pinnedCommands);
           renderQuickCommands();
         });
       });
@@ -1958,23 +2180,26 @@
     // It is intentionally NEVER inferred from RSSI/signal strength (see sendCommandText's
     // scan-line parser above) - a weak/strong reading doesn't tell you which antenna a
     // board has, only how far/obstructed the current target is.
-    const antTypeSelect = document.getElementById('antTypeSelect');
+    const antTypeValue = document.getElementById('antTypeValue');
     const antTypeTag = document.getElementById('ant-type-tag');
     function applyAntennaTypeLabel(type) {
       antTypeTag.textContent = type === 'ipex' ? '(IPEX)' : '(Internal)';
+      antTypeValue.textContent = type === 'ipex' ? 'IPEX' : 'PCB';
+      antTypeValue.dataset.ant = type;
     }
     const savedAntType = localStorage.getItem('antennaType') || 'internal';
-    antTypeSelect.value = savedAntType;
     applyAntennaTypeLabel(savedAntType);
-    antTypeSelect.addEventListener('change', () => {
-      localStorage.setItem('antennaType', antTypeSelect.value);
-      applyAntennaTypeLabel(antTypeSelect.value);
+    antTypeValue.addEventListener('click', () => {
+      const next = antTypeValue.dataset.ant === 'ipex' ? 'internal' : 'ipex';
+      localStorage.setItem('antennaType', next);
+      applyAntennaTypeLabel(next);
     });
   </script>
 
   <!-- Serial Logic -->
   <script>
     let port, reader, keepReading = false;
+    let handshakeCaptureArmed = false;
 
     const connectBtn = document.getElementById('connectBtn');
     const disconnectBtn = document.getElementById('disconnectBtn');
@@ -2042,6 +2267,61 @@
       document.querySelectorAll('.cmd-item input').forEach(inp => inp.disabled = !yes);
     }
 
+    // MAC Address Changer (Identity Spoofer panel, next to Device Info)
+    const macSpoofSelect = document.getElementById('macSpoofSelect');
+    const macCustomInput = document.getElementById('macCustomInput');
+    const MAC_RE = /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/;
+
+    function randomMac() {
+      // Set the locally-administered bit (2nd hex digit of the first octet: 2/6/A/E)
+      // and clear the multicast bit, so it looks like a normal unicast device MAC.
+      const first = ((Math.floor(Math.random() * 16) & 0xE) | 0x2).toString(16).toUpperCase();
+      let mac = '0' + first;
+      for (let i = 0; i < 5; i++) {
+        mac += ':' + Math.floor(Math.random() * 256).toString(16).toUpperCase().padStart(2, '0');
+      }
+      return mac;
+    }
+
+    document.getElementById('macGenBtn').addEventListener('click', () => {
+      macCustomInput.value = randomMac();
+    });
+
+    function currentMacValue() {
+      const custom = macCustomInput.value.trim().toUpperCase();
+      return custom || macSpoofSelect.value;
+    }
+
+    // Command syntax for changing the AP/STA MAC isn't identical across firmwares
+    // (and isn't fully documented as a plain CLI string for every build), so this
+    // sends the best-known command per firmware. If your firmware/version expects
+    // something different, type it directly in the console instead.
+    function macSpoofCommand(iface, mac) {
+      const fw = document.getElementById('firmwareSelect').value;
+      if (fw === 'ghostesp') return `setmac -${iface} ${mac}`;
+      return `mac -${iface} ${mac}`; // marauder / bruce / generic best-effort
+    }
+
+    async function runMacSpoof(iface) {
+      const mac = currentMacValue();
+      if (!MAC_RE.test(mac)) {
+        alert('Enter a valid MAC address, e.g. 1A:2B:3C:4D:5E:6F');
+        return;
+      }
+      document.querySelector('[data-panel="console-panel"]').click();
+      await sendCommandText(macSpoofCommand(iface, mac));
+
+      const rebootAfter = document.getElementById('macRebootAfter').checked;
+      if (rebootAfter) {
+        await new Promise(r => setTimeout(r, 400)); // let the mac command land before rebooting
+        log('--- Rebooting to cleanly apply the new MAC ---\n');
+        await sendCommandText('reboot');
+      }
+    }
+
+    document.getElementById('spoofApBtn').addEventListener('click', () => runMacSpoof('a'));
+    document.getElementById('spoofStaBtn').addEventListener('click', () => runMacSpoof('s'));
+
     async function connectSerial() {
       if (!('serial' in navigator)) { alert('Web Serial API not supported. Use Chrome or Edge.'); return; }
       try {
@@ -2085,18 +2365,33 @@
               setFirmwareSelection('bruce');
             }
 
-            // SD card detection
-            if (
+            // Auto-stop the deauth once the Auto Handshake Capture macro is armed and the
+            // firmware reports it actually saw an EAPOL frame (e.g. "Received EAPOL: ...").
+            if (handshakeCaptureArmed && l.includes('eapol')) {
+              handshakeCaptureArmed = false;
+              log('\n--- EAPOL handshake seen - stopping deauth automatically ---\n');
+              sendCommandText('stopdeauth');
+            }
+
+            // SD card detection. Checks the actual reported size (not just whether the
+            // phrase "sd card" appears) so a 0-size or "no card" reply correctly clears
+            // the green LED instead of leaving a stale "connected" state on screen.
+            const sdSizeMatch = l.match(/sd (?:card )?size:?\s*([\d.]+)\s*(kb|mb|gb)?/i) || l.match(/sd card:\s*([\d.]+)\s*(kb|mb|gb)?/i);
+            if (sdSizeMatch) {
+              document.getElementById('sd-dot').className = parseFloat(sdSizeMatch[1]) > 0 ? 'dot on' : 'dot err';
+            }
+            else if (
               l.includes('sd mounted') || l.includes('sd card found') ||
               l.includes('evil portal') || l.includes('sd card mounted') ||
-              l.includes('sd card: mounted') || l.includes('sd card size') || l.match(/sd card:\s*\d+/i)
+              l.includes('sd card: mounted')
             ) {
               document.getElementById('sd-dot').className = 'dot on';
             }
             else if (
               l.includes('sd failed') || l.includes('no sd card') ||
               l.includes('sd card failed') || l.includes('sd card: none') ||
-              l.includes('sd card: not mounted') || l.includes('sd card not found')
+              l.includes('sd card: not mounted') || l.includes('sd card not found') ||
+              l.includes('sd card not detected') || l.includes('card mount failed')
             ) {
               document.getElementById('sd-dot').className = 'dot err';
             }
@@ -2360,6 +2655,7 @@
 
     stopScanBtn.addEventListener('click', async () => {
       if (!port?.writable) return;
+      handshakeCaptureArmed = false;
       const w = port.writable.getWriter();
       await w.write(new TextEncoder().encode('stopscan\r\n'));
       w.releaseLock();
@@ -2381,6 +2677,7 @@
     const cmdAutocomplete = document.getElementById('cmdAutocomplete');
     let acItems = [];
     let acIndex = -1;
+    let acNavigated = false; // true only once the user actually presses ↑/↓ to browse suggestions
 
     function getFirmwareCommandPool(fw) {
       const pool = new Map(); // cmd -> desc
@@ -2388,7 +2685,7 @@
         if (!pool.has(item.cmd)) pool.set(item.cmd, '');
       });
       Object.values(advancedCommands[fw] || {}).forEach(list => {
-        list.forEach(item => pool.set(item.cmd, item.desc || ''));
+        list.forEach(item => { if (!isMacro(item.cmd)) pool.set(item.cmd, item.desc || ''); });
       });
       return pool;
     }
@@ -2424,7 +2721,7 @@
     }
 
     function hideAutocomplete() {
-      acItems = []; acIndex = -1;
+      acItems = []; acIndex = -1; acNavigated = false;
       cmdAutocomplete.style.display = 'none';
       cmdAutocomplete.innerHTML = '';
     }
@@ -2441,7 +2738,8 @@
       const q = cmdInput.value.trim();
       if (!q) { hideAutocomplete(); return; }
       acItems = getCommandSuggestions(q);
-      acIndex = -1;
+      acIndex = acItems.length ? 0 : -1; // top match pre-highlighted visually, but NOT "chosen" yet
+      acNavigated = false; // fresh typing always resets - only an actual arrow-key press counts as picking one
       renderAutocomplete();
     });
 
@@ -2454,10 +2752,18 @@
     cmdInput.addEventListener('keydown', e => {
       const acOpen = cmdAutocomplete.style.display === 'block' && acItems.length > 0;
 
+      // While the autocomplete dropdown is open, Up/Down browse the suggestion list
+      // (so you can arrow down to a match and hit Tab/Enter to pick it). Once the
+      // dropdown is closed, Up/Down go back to normal shell-style command history.
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        if (acOpen) { acIndex = (acIndex + 1) % acItems.length; renderAutocomplete(); }
-        else if (historyIndex < cmdHistory.length) {
+        if (acOpen) {
+          acIndex = (acIndex + 1) % acItems.length;
+          acNavigated = true;
+          renderAutocomplete();
+          return;
+        }
+        if (historyIndex < cmdHistory.length) {
           historyIndex++;
           cmdInput.value = historyIndex === cmdHistory.length ? historyDraft : cmdHistory[historyIndex];
         }
@@ -2465,22 +2771,37 @@
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        if (acOpen) { acIndex = (acIndex - 1 + acItems.length) % acItems.length; renderAutocomplete(); }
-        else if (historyIndex > 0) {
+        if (acOpen) {
+          acIndex = (acIndex - 1 + acItems.length) % acItems.length;
+          acNavigated = true;
+          renderAutocomplete();
+          return;
+        }
+        if (historyIndex > 0) {
           if (historyIndex === cmdHistory.length) historyDraft = cmdInput.value;
           historyIndex--;
           cmdInput.value = cmdHistory[historyIndex];
         }
         return;
       }
-      if ((e.key === 'Tab' || e.key === 'Enter') && acOpen && acIndex >= 0) {
+      // Tab always accepts the (visually pre-highlighted) top suggestion - that's the
+      // classic shell-completion gesture, so it's fine even without arrow-key browsing.
+      if (e.key === 'Tab' && acOpen && acIndex >= 0) {
+        e.preventDefault();
+        selectAutocomplete(acIndex);
+        return;
+      }
+      // Enter only swaps in a suggestion if you actually browsed to it with ↑/↓ first.
+      // Otherwise Enter sends exactly what you typed - typing a full command like "ls /"
+      // and hitting Enter should run "ls /", not silently substitute the top match.
+      if (e.key === 'Enter' && acOpen && acIndex >= 0 && acNavigated) {
         e.preventDefault();
         selectAutocomplete(acIndex);
         return;
       }
       if (e.key === 'Escape' && acOpen) { e.preventDefault(); hideAutocomplete(); return; }
 
-      if (e.key === 'Enter') { sendCommand(); }
+      if (e.key === 'Enter') { hideAutocomplete(); sendCommand(); }
       else if (e.ctrlKey && e.key.toLowerCase() === 'c') {
         if (cmdInput.selectionStart !== cmdInput.selectionEnd) return; // Allow copy
         e.preventDefault(); sendCtrl(0x03, 'C');
@@ -2539,10 +2860,12 @@
 
     // Quick status refresh (gets SD Card, WiFi, Firmware info)
     document.getElementById('sysRefreshBtn').addEventListener('click', () => {
+      document.getElementById('sd-dot').className = 'dot'; // neutral until the new info reply says otherwise
       sendCommandText('info');
     });
 
     document.getElementById('infoRefreshBtn').addEventListener('click', () => {
+      document.getElementById('sd-dot').className = 'dot';
       sendCommandText('info');
     });
 
