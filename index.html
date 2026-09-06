@@ -1185,10 +1185,6 @@
           </div>
           <div id="terminal-wrap" style="position:relative; flex:1; min-height:200px; display:flex;">
             <div id="terminal"></div>
-            <button id="jumpToBottomBtn" type="button"
-              style="display:none; position:absolute; bottom:14px; right:24px; z-index:11; background:var(--green); color:#000; border:none; border-radius:20px; padding:6px 14px; font-family:var(--mono); font-size:12px; font-weight:bold; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.6);">
-              ↓ NEW OUTPUT — JUMP TO BOTTOM
-            </button>
           </div>
 
           <div id="shortcut-row" style="margin-top: 8px; margin-bottom: 8px;">
@@ -1996,28 +1992,21 @@
     const fmInitCmd = document.getElementById('fmInitCmd');
     const fmUploadBtn = document.getElementById('fmUploadBtn');
 
-    const jumpToBottomBtn = document.getElementById('jumpToBottomBtn');
-
     // Auto-scroll lock: if the user has scrolled up to read earlier output, new incoming
-    // serial data shouldn't yank the view back down. Only auto-scroll while already at
-    // (or forced to) the bottom; otherwise surface a "jump to bottom" pill.
+    // serial data shouldn't yank the view back down.
     let userPinnedScroll = false;
     function isNearTerminalBottom() {
       return terminal.scrollHeight - terminal.scrollTop - terminal.clientHeight < 60;
     }
     terminal.addEventListener('scroll', () => {
       userPinnedScroll = !isNearTerminalBottom();
-      jumpToBottomBtn.style.display = userPinnedScroll ? 'block' : 'none';
     });
     function autoScrollTerminal(force) {
       if (force || !userPinnedScroll) {
         terminal.scrollTop = terminal.scrollHeight;
         userPinnedScroll = false;
-        jumpToBottomBtn.style.display = 'none';
       }
     }
-    jumpToBottomBtn.addEventListener('click', () => autoScrollTerminal(true));
-
     // Cap terminal size so very long scan/sniff sessions don't grow the DOM forever and
     // slow the page down. Trims the oldest nodes once the buffer gets too large.
     const TERMINAL_MAX_CHARS = 400000;
@@ -2546,7 +2535,6 @@
     document.getElementById('clearBtn').addEventListener('click', () => {
       terminal.textContent = '';
       userPinnedScroll = false;
-      jumpToBottomBtn.style.display = 'none';
     });
 
     // Quick status refresh (gets SD Card, WiFi, Firmware info)
