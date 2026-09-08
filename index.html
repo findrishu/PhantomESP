@@ -1124,6 +1124,115 @@
         box-shadow: none;
       }
     }
+    /* ── DISCLAIMER MODAL ──────────────────────────────── */
+    #disclaimer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      backdrop-filter: blur(4px);
+    }
+    #disclaimer-overlay.visible { opacity: 1; }
+
+    #disclaimer-box {
+      background: #050505;
+      border: 2px solid var(--red);
+      border-radius: 6px;
+      max-width: 560px;
+      width: 100%;
+      padding: 32px 28px 24px;
+      box-shadow: 6px 6px 0px rgba(192,0,0,0.6), 0 0 40px rgba(192,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+    }
+
+    #disclaimer-box h2 {
+      font-family: var(--vt);
+      font-size: 32px;
+      color: var(--red);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: glitch 4s infinite;
+    }
+
+    #disclaimer-box .warn-icon {
+      font-size: 28px;
+      animation: blink 1s step-end infinite;
+    }
+
+    #disclaimer-box p {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    #disclaimer-box p strong { color: var(--bright); }
+    #disclaimer-box p .red   { color: var(--red-hot); }
+
+    #disclaimer-box ul {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.8;
+      padding-left: 20px;
+    }
+
+    #disclaimer-box ul li::marker { color: var(--red); }
+
+    #disclaimer-box .disc-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+
+    #disclaimer-box .disc-footer {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    #agreeBtn {
+      background: #000;
+      color: var(--red);
+      border: 2px solid var(--red);
+      border-radius: 4px;
+      font-family: var(--vt);
+      font-size: 22px;
+      letter-spacing: 3px;
+      padding: 14px 0;
+      width: 100%;
+      cursor: pointer;
+      transition: 0.2s;
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+    #agreeBtn:hover {
+      background: var(--red);
+      color: #000;
+      transform: translate(-4px, -4px);
+      box-shadow: 4px 4px 0px rgba(192,0,0,0.7);
+    }
+    #agreeBtn:active {
+      transform: translate(0);
+      box-shadow: none;
+    }
+
+    @media (max-width: 480px) {
+      #disclaimer-box { padding: 24px 16px 18px; }
+      #disclaimer-box h2 { font-size: 24px; letter-spacing: 2px; }
+      #agreeBtn { font-size: 18px; padding: 12px 0; }
+    }
   </style>
 </head>
 
@@ -1132,6 +1241,30 @@
   <!-- Boot Screen -->
   <div id="boot">
     <pre id="asciiArt"></pre>
+  </div>
+
+  <!-- Disclaimer Modal -->
+  <div id="disclaimer-overlay" role="dialog" aria-modal="true" aria-labelledby="disc-title" style="display:none;">
+    <div id="disclaimer-box">
+      <h2 id="disc-title"><span class="warn-icon">⚠</span> DISCLAIMER</h2>
+      <p>
+        <strong>PhantomESP</strong> is an <strong>open-source</strong> tool built for serial
+        communication with ESP32-based hardware.
+      </p>
+      <ul>
+        <li>Use this tool <strong>only on your own devices</strong> or networks you have explicit written permission to test.</li>
+        <li>Using this against <span class="red">unauthorized networks or devices</span> is <span class="red">illegal</span> &mdash; including under India&rsquo;s IT Act 2000, Sections 43/66.</li>
+        <li>The developer (<em>findrishu</em>) is <span class="red">not responsible</span> for any misuse, damage, or legal consequences arising from use of this tool.</li>
+        <li>This tool is intended strictly for educational, research, and ethical security testing purposes.</li>
+        <li><strong>You use this entirely at your own risk.</strong></li>
+      </ul>
+      <hr class="disc-divider">
+      <p class="disc-footer">
+        By clicking "I AGREE", you confirm that you understand these terms and will use this tool responsibly and legally.
+        This is open-source software — provided AS IS, with no warranty.
+      </p>
+      <button id="agreeBtn">[ I AGREE — ENTER ]</button>
+    </div>
   </div>
 
   <div class="dash-shell">
@@ -1656,7 +1789,7 @@
           colorT++;
           const col = colorT < GF ? (colorT % 4 < 2 ? W : R) : R;
           for (let i = 0; i < order.length; i++)colorGrid[order[i].r][order[i].c] = col;
-          if (colorT >= GF) { phase = 'done'; setTimeout(() => { const b = document.getElementById('boot'); b.style.opacity = '0'; setTimeout(() => { b.style.display = 'none'; bootFinished = true; }, 1000); }, 1500); }
+          if (colorT >= GF) { phase = 'done'; setTimeout(() => { const b = document.getElementById('boot'); b.style.opacity = '0'; setTimeout(() => { b.style.display = 'none'; bootFinished = true; showDisclaimer(); }, 1000); }, 1500); }
         } else if (phase === 'done') {
           flickerFrame++;
           for (let i = 0; i < order.length; i++) { const p = order[i]; const a = Math.max(0.4, 0.8 + 0.2 * Math.sin(flickerFrame * .1 + i * .5)); colorGrid[p.r][p.c] = 'rgba(255,40,40,' + a + ')'; }
@@ -1665,6 +1798,21 @@
       }
       animate();
     })();
+  </script>
+
+  <script>
+    function showDisclaimer() {
+      // Show once per browser session — refreshing shows it again (intentional for a legal disclaimer)
+      if (sessionStorage.getItem('phantomDisclaimed')) return;
+      const overlay = document.getElementById('disclaimer-overlay');
+      overlay.style.display = 'flex';
+      requestAnimationFrame(() => overlay.classList.add('visible'));
+      document.getElementById('agreeBtn').addEventListener('click', function () {
+        sessionStorage.setItem('phantomDisclaimed', '1');
+        overlay.classList.remove('visible');
+        setTimeout(() => { overlay.style.display = 'none'; }, 400);
+      }, { once: true });
+    }
   </script>
 
   <script>
@@ -2371,9 +2519,22 @@
     async function connectSerial() {
       if (window.__serialReady) { await window.__serialReady; }
       const serialAPI = window.__serialAPI;
-      if (!serialAPI) { alert('Web Serial API not supported. Use Chrome or Edge.'); return; }
+      if (!serialAPI) { alert('Web Serial API not supported. Use Chrome or Edge on desktop, or Chrome on Android with a USB OTG cable.'); return; }
+
+      // Common ESP32 USB-to-serial chip VID/PIDs.
+      // The WebUSB polyfill (used on Android) requires filters — without them it shows nothing.
+      // Native Web Serial on desktop ignores filters if the user picks a different port manually.
+      const ESP_FILTERS = [
+        { usbVendorId: 0x10C4, usbProductId: 0xEA60 }, // Silicon Labs CP2102/CP2104
+        { usbVendorId: 0x1A86, usbProductId: 0x7523 }, // CH340
+        { usbVendorId: 0x1A86, usbProductId: 0x55D4 }, // CH9102 (newer boards)
+        { usbVendorId: 0x0403, usbProductId: 0x6001 }, // FTDI FT232RL
+        { usbVendorId: 0x0403, usbProductId: 0x6015 }, // FTDI FT231X
+        { usbVendorId: 0x303A, usbProductId: 0x1001 }, // Espressif USB-CDC (ESP32-S2/S3/C3 native USB)
+      ];
+
       try {
-        port = await serialAPI.requestPort();
+        port = await serialAPI.requestPort({ filters: ESP_FILTERS });
         const br = parseInt(document.getElementById('baudRate').value) || 115200;
         await port.open({ baudRate: br });
         document.getElementById('conn-dot').className = 'dot on';

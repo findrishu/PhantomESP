@@ -29,6 +29,14 @@ If you are an AI Agent operating on this codebase, you MUST adhere to the follow
 * **Firmware Selector**: The UI supports switching between ESP32 Marauder, Ghost ESP, and Bruce.
 * **Dynamic Commands**: The Quick Commands pills are dynamically generated based on the `firmwareSelect` dropdown. When adding new commands, modify the `firmwareCommands` object in the JS, do not hardcode HTML buttons.
 
+## ⚠️ 5. Disclaimer / Warning Modal
+* **Location in HTML**: The `#disclaimer-overlay` div sits immediately after the `#boot` div (before `.dash-shell`), around line 1150–1165 (line numbers shift as the file grows).
+* **Trigger**: `showDisclaimer()` is called at the end of the boot animation — specifically inside the final `setTimeout` where `bootFinished = true` is set. Do NOT move this call elsewhere or it will fire before/during the boot animation.
+* **Session Persistence**: Acceptance is stored in `sessionStorage` under the key `'phantomDisclaimed'`. This means the disclaimer shows once per browser session (refreshing re-shows it). This is intentional for a legal disclaimer — do NOT change it to `localStorage`.
+* **Styling**: Uses the existing CSS variables (`--red`, `--vt`, `--mono`, `--border`, etc.). The neo-brutalist hover transform on `#agreeBtn` uses `translate(-4px, -4px)` (larger than the standard `-0.25rem` because it's a primary CTA).
+* **Do NOT remove** the disclaimer or its `showDisclaimer()` call. If the user wants to change the text, edit only the `<ul>` and `<p>` content inside `#disclaimer-box`.
+* **Mobile**: The `@media (max-width: 480px)` block inside the disclaimer CSS handles small screens — keep it.
+
 ## 🛑 4. General Rules
 * Do not introduce heavy frontend frameworks (React, Vue, Tailwind) to this vanilla HTML/CSS/JS project.
 * Always communicate changes with the user in English.
